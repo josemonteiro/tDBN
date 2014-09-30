@@ -11,24 +11,27 @@ public class Scores {
 	private Observations observations;
 
 	/**
-	 * scoresMatrix[t][i][j] is the score of the arc Xj[t+1]->Xi[t+1]
+	 * scoresMatrix[t][i][j] is the score of the arc
+	 * Xj[t+markovLag]->Xi[t+markovLag].
 	 */
 	private double[][][] scoresMatrix;
 
 	/**
-	 * parentNodes.get(t).get(i) is the list of optimal parents in X[t] of
-	 * Xi[t+1] when there is no arc from X[t+1] to Xi[t+1].
+	 * parentNodes.get(t).get(i) is the list of optimal parents in
+	 * {X[t],...,X[t+markovLag-1]} of Xi[t+markovLag] when there is no arc from
+	 * X[t+markovLag] to X[t+markovLag].
 	 */
 	private List<List<List<Integer>>> parentNodesPast;
 
 	/**
-	 * parentNodes.get(t).get(i).get(j) is the list of optimal parents in X[t]
-	 * of Xi[t+1] when the arc Xj[t+1]->Xi[t+1] is present.
+	 * parentNodes.get(t).get(i).get(j) is the list of optimal parents in
+	 * {X[t],...,X[t+markovLag-1]} of Xi[t+markovLag] when the arc
+	 * Xj[t+markovLag]->Xi[t+markovLag] is present.
 	 */
 	private List<List<List<List<Integer>>>> parentNodes;
 
 	/**
-	 * Upper limit on the number of parents from the previous time slice.
+	 * Upper limit on the number of parents from previous time slices.
 	 */
 	private int maxParents;
 
@@ -55,11 +58,12 @@ public class Scores {
 		this.stationaryProcess = stationaryProcess;
 
 		int n = this.observations.numAttributes();
-		int k = this.maxParents;
+		int p = this.maxParents;
+		int markovLag = observations.getMarkovLag();
 
 		// calculate sum_i=1^k nCi
-		int size = n;
-		for (int previous = n, i = 2; i <= k; i++) {
+		int size = n * markovLag;
+		for (int previous = n, i = 2; i <= p; i++) {
 			int current = previous * (n - i + 1) / i;
 			size += current;
 			previous = current;
@@ -68,8 +72,8 @@ public class Scores {
 
 		// generate parents sets
 		parentSets = new ArrayList<List<Integer>>(size);
-		for (int i = 1; i <= k; i++) {
-			generateCombinations(n, i);
+		for (int i = 1; i <= p; i++) {
+			generateCombinations(n * markovLag, i);
 		}
 
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
@@ -205,7 +209,7 @@ public class Scores {
 	public DynamicBayesNet toDBN(int root) {
 
 		if (!evaluated)
-			throw new IllegalStateException("Scores must be" + "evaluated before being converted to DBN");
+			throw new IllegalStateException("Scores must be evaluated before being converted to DBN");
 
 		int n = observations.numAttributes();
 
@@ -238,7 +242,8 @@ public class Scores {
 						interRelations.add(new Edge(nodePast, i));
 				}
 
-			BayesNet bt = new BayesNet(observations.getAttributes(), intraRelations, interRelations);
+			BayesNet bt = new BayesNet(observations.getAttributes(), observations.getMarkovLag(), intraRelations,
+					interRelations);
 
 			transitionNets.add(bt);
 		}

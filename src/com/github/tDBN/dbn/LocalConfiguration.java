@@ -30,9 +30,9 @@ public class LocalConfiguration extends Configuration {
 	 * @param childNode
 	 *            child node in t+1
 	 */
-	public LocalConfiguration(List<Attribute> attributes, List<Integer> parentNodesPast,
+	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			List<Integer> parentNodesPresent, int childNode) {
-		super(attributes);
+		super(attributes, markovLag);
 		this.reset();
 
 		int n = attributes.size();
@@ -41,26 +41,31 @@ public class LocalConfiguration extends Configuration {
 		int numParents = numParentsPast + numParentsPresent;
 
 		parentIndices = new int[numParents];
-		for (int i = 0; i < numParentsPast; i++) {
-			parentIndices[i] = parentNodesPast.get(i);
-		}
-		for (int i = 0; i < numParentsPresent; i++) {
-			parentIndices[i + numParentsPast] = parentNodesPresent.get(i) + n;
-		}
+		int i = 0;
+
+		if (parentNodesPast != null)
+			// parentNodesPast ints are already shifted
+			for (Integer parentNode : parentNodesPast)
+				parentIndices[i++] = parentNode;
+
+		if (parentNodesPresent != null)
+			for (Integer parentNode : parentNodesPresent)
+				parentIndices[i++] = parentNode + markovLag * n;
+
 		resetParents();
 
 		this.childNode = childNode;
 		resetChild();
 	}
 
-	public LocalConfiguration(List<Attribute> attributes, List<Integer> parentNodesPast, Integer parentNodePresent,
-			int childNode) {
-		this(attributes, parentNodesPast, (parentNodePresent != null ? Arrays.asList(parentNodePresent) : null),
-				childNode);
+	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
+			Integer parentNodePresent, int childNode) {
+		this(attributes, markovLag, parentNodesPast, (parentNodePresent != null ? Arrays.asList(parentNodePresent)
+				: null), childNode);
 	}
 
-	public LocalConfiguration(List<Attribute> attributes, List<Integer> parentNodes, int childNode) {
-		this(attributes, parentNodes, (List<Integer>) null, childNode);
+	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodes, int childNode) {
+		this(attributes, markovLag, parentNodes, (List<Integer>) null, childNode);
 	}
 
 	/**
@@ -77,10 +82,10 @@ public class LocalConfiguration extends Configuration {
 
 		int n = attributes.size();
 
-		for (int i = 0; i < 2 * n; i++) {
+		for (int i = 0; i < configuration.length; i++) {
 			if (configuration[i] > -1) {
 				if (observation[i] != configuration[i]) {
-					if (considerChild || i != childNode + n) {
+					if (considerChild || i != childNode + n * markovLag) {
 						return false;
 					}
 				}
@@ -134,7 +139,7 @@ public class LocalConfiguration extends Configuration {
 
 		int n = attributes.size();
 
-		if (++configuration[n + childNode] < attributes.get(childNode).size()) {
+		if (++configuration[n * markovLag + childNode] < attributes.get(childNode).size()) {
 			return true;
 		} else {
 			resetChild();
@@ -148,7 +153,7 @@ public class LocalConfiguration extends Configuration {
 	 */
 	public void resetChild() {
 		int n = attributes.size();
-		configuration[n + childNode] = 0;
+		configuration[n * markovLag + childNode] = 0;
 	}
 
 	public int getParentsRange() {
@@ -185,7 +190,8 @@ public class LocalConfiguration extends Configuration {
 		parentNodesPast.add(2);
 		Integer parentNodePresent = 3;
 		int childNode = 1;
-		LocalConfiguration c = new LocalConfiguration(o.getAttributes(), parentNodesPast, parentNodePresent, childNode);
+		LocalConfiguration c = new LocalConfiguration(o.getAttributes(), 1, parentNodesPast, parentNodePresent,
+				childNode);
 
 		System.out.println(o);
 

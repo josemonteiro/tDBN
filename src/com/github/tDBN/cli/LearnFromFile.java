@@ -26,53 +26,71 @@ public class LearnFromFile {
 		// create Options object
 		Options options = new Options();
 
-		Option learningFile = OptionBuilder.withArgName("file").hasArg().isRequired()
+		Option inputFile = OptionBuilder.withArgName("file").hasArg().isRequired()
 				.withDescription("Input CSV file to be used for network learning.").withLongOpt("inputFile")
 				.create("i");
 
 		Option numParents = OptionBuilder.hasArg().isRequired()
-				.withDescription("Number of parents from preceding time slice.").withLongOpt("numParents").create("p");
+				.withDescription("Maximum number of parents from preceding time slice(s).").withLongOpt("numParents")
+				.create("p");
 
-		Option outputNetwork = OptionBuilder.withArgName("file").hasArg().isRequired()
-				.withDescription("Output file with the network structure. ").withLongOpt("outputFile").create("o");
+		Option outputFile = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("Writes output to <file>. If not supplied, output is written to terminal.")
+				.withLongOpt("outputFile").create("o");
 
 		Option rootNode = OptionBuilder.withArgName("node").hasArg()
 				.withDescription("Root node of the intra-slice tree. By default, root is arbitrary.")
 				.withLongOpt("root").create("r");
 
 		Option scoringFunction = OptionBuilder.hasArg()
-				.withDescription("Scoring function to be used, either LL or MDL. LL used by default.")
+				.withDescription("Scoring function to be used, either MDL or LL. MDL is used by default.")
 				.withLongOpt("scoringFunction").create("s");
 
-		Option dotFormat = OptionBuilder.withDescription("If specified, outputs network in dot format.")
+		Option dotFormat = OptionBuilder
+				.withDescription(
+						"Outputs network in dot format, allowing direct use with GraphViz to visualize the graph.")
 				.withLongOpt("dotFormat").create("d");
 
 		Option compact = OptionBuilder
 				.withDescription(
-						"If specified together with -d, outputs network in compact format, ommiting intra-slice edges.")
+						"Outputs network in compact format, ommiting intra-slice edges. Only works if specified together with -d and with --markovLag 1.")
 				.withLongOpt("compact").create("c");
 
-		options.addOption(learningFile);
+		Option maxMarkovLag = OptionBuilder
+				.hasArg()
+				.withDescription(
+						"Maximum Markov lag to be considered, which is the longest distance between connected time slices. Default is 1, allowing edges from one preceeding slice.")
+				.withLongOpt("markovLag").create("l");
+
+		options.addOption(inputFile);
 		options.addOption(numParents);
-		options.addOption(outputNetwork);
+		options.addOption(outputFile);
 		options.addOption(rootNode);
 		options.addOption(scoringFunction);
 		options.addOption(dotFormat);
 		options.addOption(compact);
+		options.addOption(maxMarkovLag);
 
 		CommandLineParser parser = new GnuParser();
 		try {
 
 			CommandLine cmd = parser.parse(options, args);
 
-			Observations o = new Observations(cmd.getOptionValue("i"));
+			int markovLag = 1;
+			if (cmd.hasOption("l")) {
+				markovLag = Integer.parseInt(cmd.getOptionValue("l"));
+				// TODO: check sanity
+			}
+
+			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
+
 			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), true);
-			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("mdl")) {
-				System.out.println("Evaluating network with MDL score.");
-				s.evaluate(new MDLScoringFunction());
-			} else {
+			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				System.out.println("Evaluating network with LL score.");
 				s.evaluate(new LLScoringFunction());
+			} else {
+				System.out.println("Evaluating network with MDL score.");
+				s.evaluate(new MDLScoringFunction());
 			}
 
 			DynamicBayesNet dbn;
@@ -82,26 +100,34 @@ public class LearnFromFile {
 				System.out.println("Root node specified: " + r);
 				dbn = s.toDBN(r);
 			} else {
-				System.out.println("No root specified.");
+				// System.out.println("No root specified.");
 				dbn = s.toDBN();
 			}
 
-			try {
-				if (cmd.hasOption("d") && cmd.hasOption("c"))
-					Utils.writeToFile(cmd.getOptionValue("o"), dbn.toDotSimple(true));
-				else if (cmd.hasOption("d") && !cmd.hasOption("c"))
-					Utils.writeToFile(cmd.getOptionValue("o"), dbn.toDotSimple(false));
+			String output;
+			if (cmd.hasOption("d")) {
+				if (cmd.hasOption("c") && markovLag == 1)
+					output = dbn.toDot(true);
 				else
-					Utils.writeToFile(cmd.getOptionValue("o"), dbn.toString());
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
+					output = dbn.toDot(false);
+			} else
+				output = dbn.toString();
+
+			if (cmd.hasOption("o")) {
+				try {
+					Utils.writeToFile(cmd.getOptionValue("o"), output);
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+			} else {
+				System.out.println();
+				System.out.println(output);
 			}
 
 		} catch (ParseException e) {
 			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp("tldbn", options);
+			formatter.printHelp("tDBN", options);
 		}
 
 	}
-
 }

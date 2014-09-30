@@ -8,8 +8,8 @@ public class MDLScoringFunction extends LLScoringFunction {
 	public double evaluate(Observations observations, int transition, List<Integer> parentNodesPast,
 			Integer parentNodePresent, int childNode) {
 
-		LocalConfiguration c = new LocalConfiguration(observations.getAttributes(), parentNodesPast, parentNodePresent,
-				childNode);
+		LocalConfiguration c = new LocalConfiguration(observations.getAttributes(), observations.getMarkovLag(),
+				parentNodesPast, parentNodePresent, childNode);
 
 		double score = super.evaluate(observations, transition, parentNodesPast, parentNodePresent, childNode);
 

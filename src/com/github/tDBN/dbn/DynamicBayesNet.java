@@ -8,21 +8,24 @@ import com.github.tDBN.utils.Edge;
 
 public class DynamicBayesNet {
 
+	private List<Attribute> attributes;
+
+	private int markovLag;
+
+	private BayesNet initialNet;
+
+	private List<BayesNet> transitionNets;
+
 	public DynamicBayesNet(List<Attribute> attributes, BayesNet initialNet, List<BayesNet> transitionNets) {
 		this.attributes = attributes;
 		this.initialNet = initialNet;
 		this.transitionNets = transitionNets;
+		this.markovLag = transitionNets.get(0).getMarkovLag();
 	}
 
 	public DynamicBayesNet(List<Attribute> attributes, List<BayesNet> transitionNets) {
 		this(attributes, null, transitionNets);
 	}
-
-	private List<Attribute> attributes;
-
-	private BayesNet initialNet;
-
-	private List<BayesNet> transitionNets;
 
 	public DynamicBayesNet generateParameters() {
 		initialNet.generateParameters();
@@ -96,20 +99,21 @@ public class DynamicBayesNet {
 					+ "transitions defined, cannot generate " + numTransitions + ".");
 
 		int n = attributes.size();
-		int[][][] obsMatrix = new int[numTransitions][numIndividuals][2 * n];
+		//
+		int[][][] obsMatrix = new int[numTransitions][numIndividuals][(markovLag + 1) * n];
 
 		for (int subject = 0; subject < numIndividuals; subject++) {
 			int[] observation0 = initialObservations != null ? initialObservations.get(subject) : initialNet
 					.nextObservation(null);
 			int[] observationT = observation0;
 			for (int transition = 0; transition < numTransitions; transition++) {
-				System.arraycopy(observationT, 0, obsMatrix[transition][subject], 0, n);
+				System.arraycopy(observationT, 0, obsMatrix[transition][subject], 0, n * markovLag);
 
 				int[] observationTplus1 = stationaryProcess ? transitionNets.get(0).nextObservation(observationT)
 						: transitionNets.get(transition).nextObservation(observationT);
-				System.arraycopy(observationTplus1, 0, obsMatrix[transition][subject], n, n);
+				System.arraycopy(observationTplus1, 0, obsMatrix[transition][subject], n * markovLag, n);
 
-				observationT = observationTplus1;
+				observationT = Arrays.copyOfRange(obsMatrix[transition][subject], n, (markovLag + 1) * n);
 			}
 		}
 
@@ -130,97 +134,16 @@ public class DynamicBayesNet {
 		return counts;
 	}
 
-	public String toDot() {
-		StringBuilder sb = new StringBuilder();
-		String ls = System.getProperty("line.separator");
-		String dl = ls + ls;
-		int n = attributes.size();
-		int T = transitionNets.size() + 1;
-
-		// digraph init
-		sb.append("digraph dbn{" + dl);
-		sb.append("node[style=\"rounded,filled\", fillcolor=gray95 shape=box, fontname=Arial];" + dl);
-
-		// slice 0 init
-		sb.append("subgraph cluster_slice0{" + ls);
-		sb.append("style=\"dashed,rounded\";" + ls);
-		sb.append("color=gray75;" + dl);
-
-		// slice 0 attributes
-		for (int i = 0; i < n; i++) {
-			sb.append("X" + i + "_0;" + ls);
-		}
-		sb.append(ls);
-
-		// slice 0 edges
-		for (Edge e : initialNet.getIntraRelations()) {
-			int parent = e.getTail();
-			int child = e.getHead();
-			sb.append("X" + parent + "_0->X" + child + "_0;" + ls);
-		}
-		sb.append(ls);
-		sb.append("}" + dl);
-
-		// other slices
-
-		for (int t = 1; t < T; t++) {
-
-			// slice t init
-			sb.append("subgraph cluster_slice" + t + "{" + ls);
-			sb.append("style=\"dashed,rounded\";" + ls);
-			sb.append("color=gray75;" + dl);
-
-			// slice t attributes
-			for (int i = 0; i < n; i++) {
-				sb.append("X" + i + "_" + t + ";" + ls);
-			}
-			sb.append(ls);
-
-			// slice 0 edges (invisible)
-			for (Edge e : initialNet.getIntraRelations()) {
-				int parent = e.getTail();
-				int child = e.getHead();
-				sb.append("X" + parent + "_" + t + "->X" + child + "_" + t + "[style=invis];" + ls);
-			}
-			sb.append(ls);
-			sb.append("}" + dl);
-		}
-		sb.append(ls);
-
-		// transition and intra-slice (t>0) edges
-		int t = 1;
-		for (BayesNet transition : transitionNets) {
-
-			for (Edge e : transition.getIntraRelations()) {
-				int parent = e.getTail();
-				int child = e.getHead();
-				sb.append("X" + parent + "_" + t + "->X" + child + "_" + t + "[constraint=false];" + ls);
-			}
-
-			for (Edge e : transition.getInterRelations()) {
-				int parent = e.getTail();
-				int child = e.getHead();
-				int tMinusOne = t - 1;
-				sb.append("X" + parent + "_" + tMinusOne + "->X" + child + "_" + t + "[constraint=false];" + ls);
-			}
-
-			t++;
-		}
-		sb.append(ls);
-		sb.append("}" + ls);
-
-		return sb.toString();
-	}
-
-	public String toDotSimple(boolean compactFormat) {
+	public String toDot(boolean compactFormat) {
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
 		String dl = ls + ls;
 		int n = attributes.size();
 		int T = transitionNets.size();
 
-		if (compactFormat && T != 1)
-			throw new IllegalStateException("More than one transition network, cannot create unrolled graph.");
+		if (compactFormat && (T != 1 || markovLag != 1))
+			throw new IllegalStateException(
+					"More than one transition network or Markov lag larger than 1, cannot create compact graph.");
 
 		// digraph init
 		sb.append("digraph dbn{" + dl);
@@ -237,7 +160,7 @@ public class DynamicBayesNet {
 			}
 			sb.append(ls);
 		} else {
-			for (int t = 0; t <= T; t++) {
+			for (int t = 0; t < T + markovLag; t++) {
 				// slice t attributes
 				for (int i = 0; i < n; i++) {
 					sb.append("X" + i + "_" + t);
@@ -254,32 +177,10 @@ public class DynamicBayesNet {
 		sb.append(ls);
 
 		// transition and intra-slice (t>0) edges
-		int t = 1;
-		for (BayesNet transition : transitionNets) {
+		for (int t = 0; t < T; t++)
+			sb.append(transitionNets.get(t).toString(t, compactFormat));
 
-			for (Edge e : transition.getInterRelations()) {
-				int parent = e.getTail();
-				int child = e.getHead();
-				int tMinusOne = t - 1;
-				if (compactFormat)
-					sb.append("X" + parent + "->X" + child + ls);
-				else
-					sb.append("X" + parent + "_" + tMinusOne + "->X" + child + "_" + t + ls);
-			}
-
-			for (Edge e : transition.getIntraRelations()) {
-				int parent = e.getTail();
-				int child = e.getHead();
-				if (!compactFormat)
-					sb.append("X" + parent + "_" + t + "->X" + child + "_" + t + ls);
-			}
-
-			sb.append(ls);
-
-			t++;
-		}
-		sb.append(ls);
-		sb.append("}" + ls);
+		sb.append(ls + "}" + ls);
 
 		return sb.toString();
 	}
@@ -288,11 +189,11 @@ public class DynamicBayesNet {
 		StringBuilder sb = new StringBuilder();
 
 		if (initialNet != null)
-			sb.append(initialNet.toString(-1));
+			sb.append(initialNet.toString(-1, false));
 
 		int i = 0;
 		for (BayesNet transitionNet : transitionNets) {
-			sb.append(transitionNet.toString(i));
+			sb.append(transitionNet.toString(i, false));
 			i++;
 		}
 
@@ -305,7 +206,6 @@ public class DynamicBayesNet {
 
 		Attribute a1 = new NominalAttribute();
 		a1.setName("me");
-		;
 		a1.add("yes");
 		a1.add("no");
 
@@ -381,7 +281,8 @@ public class DynamicBayesNet {
 
 		DynamicBayesNet dbn1 = new DynamicBayesNet(a, b0, Arrays.asList(bt));
 
-		Observations o = dbn1.generateObservations(1000);
+		Observations o = dbn1.generateObservations(100);
+		System.out.println(o);
 
 		Scores s = new Scores(o, 2);
 		s.evaluate(new LLScoringFunction());
@@ -392,7 +293,7 @@ public class DynamicBayesNet {
 
 		DynamicBayesNet dbn2 = s.toDBN();
 
-		System.out.println(dbn1.toDotSimple(true));
+		System.out.println(dbn1.toDot(false));
 
 	}
 

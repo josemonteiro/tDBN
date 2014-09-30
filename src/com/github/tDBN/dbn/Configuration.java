@@ -9,14 +9,18 @@ public class Configuration {
 
 	protected int[] configuration;
 
+	/* markovLag = configuration.lenght/n -1 */
+	protected int markovLag;
+
 	public Configuration(Configuration c) {
 		this.attributes = c.attributes;
 		this.configuration = c.configuration.clone();
 	}
 
-	protected Configuration(List<Attribute> attributes) {
+	protected Configuration(List<Attribute> attributes, int markovLag) {
 		this.attributes = attributes;
-		this.configuration = new int[2 * attributes.size()];
+		this.markovLag = markovLag;
+		this.configuration = new int[(markovLag + 1) * attributes.size()];
 	}
 
 	protected Configuration(List<Attribute> attributes, int[] configuration) {

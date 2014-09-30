@@ -15,44 +15,56 @@ public class BayesNet {
 
 	private List<Attribute> attributes;
 
-	private List<List<Integer>> parentNodes;
+	// "processed" (unshifted) relations
+	private List<List<List<Integer>>> parentNodesPerSlice;
 
-	private List<Edge> intraRelations;
-	private List<Edge> interRelations;
+	// "raw" (shifted) relations
+	private List<List<Integer>> parentNodes;
 
 	private List<Map<Configuration, List<Double>>> parameters;
 
 	private List<Integer> topologicalOrder;
 
-	/**
-	 * maximum number of parents from t to t+1
-	 */
-	private int maxParents;
+	private int markovLag;
 
 	// for random sampling
-	private Random r = new Random();
+	private Random r;
 
 	// prior network
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, Random r) {
-		this(attributes, intraRelations, (List<Edge>) null, r);
+		this(attributes, 0, intraRelations, (List<Edge>) null, r);
 	}
 
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations) {
-		this(attributes, intraRelations, (List<Edge>) null);
+		this(attributes, 0, intraRelations, (List<Edge>) null, null);
 	}
 
-	// 2TBN
+	// transition network, standard Markov lag = 1
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, List<Edge> interRelations, Random r) {
-		this(attributes, intraRelations, interRelations);
-		this.r = r;
+		this(attributes, 1, intraRelations, interRelations, r);
 	}
 
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, List<Edge> interRelations) {
+		this(attributes, 1, intraRelations, interRelations, null);
+	}
+
+	// transition network, arbitrary Markov lag
+	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations) {
+		this(attributes, markovLag, intraRelations, interRelations, null);
+	}
+
+	// edge heads are already unshifted (i.e., in the interval [0, n[)
+	// interRelations edge tails are shifted in Configuration style (i.e, [0,
+	// markovLag*n[)
+	// intraRelations edge tails are unshifted
+	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations,
+			Random r) {
 
 		this.attributes = attributes;
-		this.intraRelations = intraRelations;
-		this.interRelations = interRelations;
+		this.markovLag = markovLag;
 		int n = attributes.size();
+
+		this.r = (r != null) ? r : new Random();
 
 		// for topological sorting of t+1 slice
 		List<List<Integer>> childNodes = new ArrayList<List<Integer>>(n);
@@ -60,39 +72,47 @@ public class BayesNet {
 			childNodes.add(new ArrayList<Integer>(n));
 		}
 
-		parentNodes = new ArrayList<List<Integer>>(n);
-		if (interRelations != null) {
-			for (int i = n; i-- > 0;) {
-				// n+1 instead of 2*n
-				parentNodes.add(new ArrayList<Integer>(2 * n));
-			}
-
-			// edges crossing consecutive slices (t to t+1)
-			for (Edge e : interRelations) {
-				// tail refers to t, head to t+1
-				List<Integer> headParentNodes = parentNodes.get(e.getHead());
-				headParentNodes.add(e.getTail());
-				if (maxParents < headParentNodes.size())
-					maxParents = headParentNodes.size();
-			}
-		} else {
-			for (int i = n; i-- > 0;) {
-				// 1 instead of n
-				parentNodes.add(new ArrayList<Integer>(n));
+		parentNodesPerSlice = new ArrayList<List<List<Integer>>>(markovLag + 1);
+		for (int slice = 0; slice < markovLag + 1; slice++) {
+			parentNodesPerSlice.add(new ArrayList<List<Integer>>(n));
+			for (int i = 0; i < n; i++) {
+				parentNodesPerSlice.get(slice).add(new ArrayList<Integer>());
 			}
 		}
 
-		// edges inside the same slice (t0 or t+1)
+		parentNodes = new ArrayList<List<Integer>>(n);
+		for (int i = 0; i < n; i++)
+			parentNodes.add(new ArrayList<Integer>());
+
+		if (interRelations != null) {
+			for (Edge e : interRelations) {
+				// tail is shifted and refers to a previous slice
+				int tail = e.getTail();
+				int slice = tail / n;
+				int unshiftedTail = tail % n;
+				// head refers to the foremost slice
+				int head = e.getHead();
+
+				parentNodesPerSlice.get(slice).get(head).add(unshiftedTail);
+				parentNodes.get(head).add(tail);
+			}
+		}
+
+		// edges inside the same slice
 		for (Edge e : intraRelations) {
-			// add n to tail so that it refers to t+1
-			parentNodes.get(e.getHead()).add(e.getTail() + n);
-			childNodes.get(e.getTail()).add(e.getHead());
+			// tail is unshifted
+			int tail = e.getTail();
+			int shiftedTail = tail + n * markovLag;
+			int head = e.getHead();
+
+			parentNodesPerSlice.get(markovLag).get(head).add(tail);
+			parentNodes.get(head).add(shiftedTail);
+			childNodes.get(tail).add(head);
 		}
 
 		// sort for when applying configuration mask
-		for (int i = n; i-- > 0;) {
+		for (int i = n; i-- > 0;)
 			Collections.sort(parentNodes.get(i));
-		}
 
 		// obtain nodes by topological order
 		topologicalOrder = Utils.topologicalSort(childNodes);
@@ -104,7 +124,7 @@ public class BayesNet {
 
 		for (int i = 0; i < n; i++) {
 
-			LocalConfiguration c = new LocalConfiguration(attributes, parentNodes.get(i), i);
+			LocalConfiguration c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
 			int parentsRange = c.getParentsRange();
 			if (parentsRange == 0) {
 				parameters.add(new HashMap<Configuration, List<Double>>(2));
@@ -143,7 +163,7 @@ public class BayesNet {
 		// for each node, generate its local CPT
 		for (int i = 0; i < n; i++) {
 
-			LocalConfiguration c = new LocalConfiguration(attributes, parentNodes.get(i), i);
+			LocalConfiguration c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
 			int parentsRange = c.getParentsRange();
 
 			// node i has no parents
@@ -217,7 +237,7 @@ public class BayesNet {
 	}
 
 	public int[] nextObservation(int[] previousObservation) {
-		MutableConfiguration c = new MutableConfiguration(attributes, previousObservation);
+		MutableConfiguration c = new MutableConfiguration(attributes, markovLag, previousObservation);
 		for (int node : topologicalOrder) {
 			Configuration indexParameters = c.applyMask(parentNodes.get(node), node);
 			List<Double> probabilities = parameters.get(node).get(indexParameters);
@@ -239,7 +259,7 @@ public class BayesNet {
 			c.update(node, value);
 		}
 		int n = attributes.size();
-		return Arrays.copyOfRange(c.toArray(), n, 2 * n);
+		return Arrays.copyOfRange(c.toArray(), markovLag * n, (markovLag + 1) * n);
 	}
 
 	public static int[] compare(BayesNet original, BayesNet recovered) {
@@ -256,7 +276,7 @@ public class BayesNet {
 	 * @param recovered
 	 * @param verbose
 	 *            if set, prints net comparison
-	 * @return [true positive, false positive, true negative, false negative]
+	 * @return [true positive, conditionPositive, testPositive]
 	 */
 	public static int[] compare(BayesNet original, BayesNet recovered, boolean verbose) {
 		// intra edges only, assume graph is a tree
@@ -264,114 +284,89 @@ public class BayesNet {
 		assert (original.attributes == recovered.attributes);
 		int n = original.attributes.size();
 		// maxParents
-		assert (original.maxParents == recovered.maxParents);
+		// assert (original.maxParents == recovered.maxParents);
 
-		List<Edge> intraTruePositive = new ArrayList<Edge>(original.intraRelations);
-		intraTruePositive.retainAll(recovered.intraRelations);
+		List<List<Integer>> parentNodesTruePositive = new ArrayList<List<Integer>>(n);
+		for (int i = 0; i < n; i++) {
+			parentNodesTruePositive.add(new ArrayList<Integer>(original.parentNodes.get(i)));
+			parentNodesTruePositive.get(i).retainAll(recovered.parentNodes.get(i));
+		}
 
-		List<Edge> interTruePositive = new ArrayList<Edge>(original.interRelations);
-		interTruePositive.retainAll(recovered.interRelations);
+		int truePositive = 0;
+		int conditionPositive = 0;
+		int testPositive = 0;
+		for (int i = 0; i < n; i++) {
+			truePositive += parentNodesTruePositive.get(i).size();
+			conditionPositive += original.parentNodes.get(i).size();
+			testPositive += recovered.parentNodes.get(i).size();
+		}
 
-		int conditionPositive = (original.intraRelations.size() + original.interRelations.size());
-		int testPositive = (recovered.intraRelations.size() + recovered.interRelations.size());
-		int popTotal = n * (2 * n - 1);
-
-		int truePositive = (intraTruePositive.size() + interTruePositive.size());
-		int falsePositive = testPositive - truePositive;
-		int trueNegative = popTotal - (conditionPositive + falsePositive);
-		int falseNegative = conditionPositive - truePositive;
-
-		// double precision = 1.0*truePositive/testPositive;
-		// double recall = 1.0*truePositive/conditionPositive;
-		// double accuracy = 1.0*(truePositive+trueNegative)/popTotal;
+		double precision = 1.0 * truePositive / testPositive;
+		double recall = 1.0 * truePositive / conditionPositive;
+		double f1 = 2 * precision * recall / (precision + recall);
 
 		if (verbose) {
 
-			System.out.println("----- Intra-relational edges -----");
+			System.out.println("Original network (" + conditionPositive + ")");
+			for (int i = 0; i < n; i++) {
+				System.out.print(i + ": ");
+				System.out.println(original.parentNodes.get(i));
+			}
 
-			System.out.println("Original network (" + original.intraRelations.size() + ")");
-			for (Edge e : original.intraRelations)
-				System.out.println(e);
+			System.out.println("Learnt network (" + testPositive + ")");
+			for (int i = 0; i < n; i++) {
+				System.out.print(i + ": ");
+				System.out.println(recovered.parentNodes.get(i));
+			}
 
-			System.out.println("Learnt network (" + recovered.intraRelations.size() + ")");
-			for (Edge e : recovered.intraRelations)
-				System.out.println(e);
+			System.out.println("In common (" + truePositive + ")");
+			for (int i = 0; i < n; i++) {
+				System.out.print(i + ": ");
+				System.out.println(parentNodesTruePositive.get(i));
+			}
 
-			System.out.println("In common (" + intraTruePositive.size() + ")");
-			for (Edge e : intraTruePositive)
-				System.out.println(e);
-
-			System.out.println("----- Inter-relational edges -----");
-
-			System.out.println("Original network (" + original.interRelations.size() + ")");
-			for (Edge e : original.interRelations)
-				System.out.println(e);
-
-			System.out.println("Learnt network (" + recovered.interRelations.size() + ")");
-			for (Edge e : recovered.interRelations)
-				System.out.println(e);
-
-			System.out.println("In common (" + interTruePositive.size() + ")");
-			for (Edge e : interTruePositive)
-				System.out.println(e);
-
-			// System.out.println("Precision (tp/(tp+fp)) = "+precision);
-			// System.out.println("Recall (tp/(tp+fn)) = "+recall);
-			// System.out.println("Accuracy ((tp+tn)/(tp+fn+fp+tn)) = "+accuracy);
-			// System.out.println("F1 = "+2*precision*recall/(precision+recall));
+			System.out.println("Precision = " + precision);
+			System.out.println("Recall  = " + recall);
+			System.out.println("F1 = " + f1);
 		}
 
-		return new int[] { truePositive, falsePositive, trueNegative, falseNegative };
+		return new int[] { truePositive, conditionPositive, testPositive };
 
 	}
 
-	public List<Edge> getIntraRelations() {
-		return intraRelations;
+	public int getMarkovLag() {
+		return markovLag;
 	}
 
-	public List<Edge> getInterRelations() {
-		return interRelations;
-	}
+	public String toString(int t, boolean compactFormat) {
 
-	public String toString(int t) {
-		StringBuilder sb = new StringBuilder();
-		String ls = System.getProperty("line.separator");
-		int tPlus1 = t + 1;
-		if (interRelations != null)
-			for (Edge e : interRelations)
-				sb.append(e.getTail() + "[" + t + "] -> " + e.getHead() + "[" + tPlus1 + "]" + ls);
-		for (Edge e : intraRelations)
-			sb.append(e.getTail() + "[" + tPlus1 + "] -> " + e.getHead() + "[" + tPlus1 + "]" + ls);
-		return sb.toString();
-	}
-
-	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
 
-		// int i = 0;
-		// for (List<Integer> iParents : parentNodes) {
-		// sb.append(i + ":\t");
-		// for (Integer parent : iParents) {
-		// sb.append(parent + "\t");
-		// }
-		// sb.append(ls);
-		// i++;
-		// }
+		int n = attributes.size();
+		int presentSlice = t + markovLag;
 
-		sb.append("intra-slice:" + ls);
-		for (Edge e : intraRelations) {
-			sb.append(e + ls);
-		}
-		if (interRelations != null) {
-			sb.append(ls);
-			sb.append("inter-slice:" + ls);
-			for (Edge e : interRelations) {
-				sb.append(e + ls);
+		if (compactFormat)
+			for (int head = 0; head < n; head++)
+				for (Integer tail : parentNodesPerSlice.get(0).get(head))
+					sb.append("X" + tail + " -> " + "X" + head + ls);
+
+		else {
+			for (int ts = 0; ts < markovLag + 1; ts++) {
+				List<List<Integer>> parentNodesOneSlice = parentNodesPerSlice.get(ts);
+				int slice = t + ts;
+				for (int head = 0; head < n; head++)
+					for (Integer tail : parentNodesOneSlice.get(head))
+						sb.append("X" + tail + "_" + slice + " -> " + "X" + head + "_" + presentSlice + ls);
+				sb.append(ls);
 			}
 		}
 
 		return sb.toString();
+	}
+
+	public String toString() {
+		return toString(0, false);
 	}
 
 	public static void main(String[] args) {
