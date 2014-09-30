@@ -1,4 +1,4 @@
-tlDBN
+tDBN
 =====
 
 com.gihub.tDBN.cli.LearnFromFile
