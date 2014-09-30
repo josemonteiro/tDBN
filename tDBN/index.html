@@ -1,0 +1,213 @@
+
+
+<!doctype html>
+<html>
+   <head>
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="chrome=1">
+      <title>tDBN | optimal tree-augmented DBN learning</title>
+      <link rel="stylesheet" href="stylesheets/styles.css">
+      <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+      <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+   </head>
+   <body>
+      <div class="wrapper">
+      <header>
+         <h1>tDBN</h1>
+         <p>A Java implementation for learning optimal tree-augmented dynamic Bayesian
+            networks
+         </p>
+         <p>Released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></p>
+         <p class="view"><a href="https://github.com/josemonteiro/tDBN">View the Project on GitHub <small>josemonteiro/tDBN</small></a></p>
+         <ul>
+            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.1/tDBN-0.1.1.jar">Download release <strong>tDBN-0.1.1</strong></a></li>
+            <li><a href="https://github.com/josemonteiro/tDBN/zipball/master">Download current <strong>sources</strong></a></li>
+         </ul>
+      </header>
+      <section>
+         <h3>Program description</h3>
+         <p>
+            tDBN is Java implementation of a dynamic Bayesian network (DBN) structure learning algorithm with the same name (for details about the algorithm, please <a href="#algorithm">scroll down</a>). It can learn a network structure from a file with multivariate longitudinal observations, and has polynomial time complexity in the number of attributes and observations.
+         </p>
+         <h4>Current release</h4>
+         <p>
+            The program's current release (2014.10.01) is tDBN-0.1.1, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.1/tDBN-0.1.1.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
+         </p>
+         <h4>Libraries</h4>
+         <p>
+            tDBN depends on two external libraries, both released under the Apache License 2.0:
+<ul><li><a href="http://opencsv.sourceforge.net/">opencsv</a> for parsing CSV files;
+<li><a href="http://commons.apache.org/proper/commons-cli/">Apache Commons CLI</a> for parsing command line 
+options passed to the program, and also printing help messages detailing the 
+available options.
+</ul>
+         </p>
+         
+         <h3>Usage</h3>
+         <p>By executing the jar file ...
+         <pre><code>$ java -jar tDBN-0.1.1.jar</code></pre>
+         ... the available command-line options are shown:
+         </p>
+         <pre><code>usage: tDBN
+ -c,--compact                 Outputs network in compact format, omitting
+                              intra-slice edges. Only works if specified
+                              together with -d and with --markovLag 1.
+ -d,--dotFormat               Outputs network in dot format, allowing
+                              direct redirection into Graphviz to
+                              visualize the graph.
+ -i,--inputFile &lt;file&gt;        Input CSV file to be used for network
+                              learning.
+ -l,--markovLag &lt;arg&gt;         Maximum Markov lag to be considered, which
+                              is the longest distance between connected
+                              time slices. Default is 1, allowing edges
+                              from one preceding slice.
+ -o,--outputFile &lt;file&gt;       Writes output to &lt;file&gt;. If not supplied,
+                              output is written to terminal.
+ -p,--numParents &lt;arg&gt;        Maximum number of parents from preceding
+                              time slice(s).
+ -r,--root &lt;node&gt;             Root node of the intra-slice tree. By
+                              default, root is arbitrary.
+ -s,--scoringFunction &lt;arg&gt;   Scoring function to be used, either MDL or
+                              LL. MDL is used by default.
+</code></pre>
+         <h4>Input file format</h4>
+         <p>
+            The input file should be in comma-separated values (CSV) format.
+         <ul>
+            <li>The first line is the header, naming the attributes and specifying the time slice index, separared by two underscores: "attributeName__t"</li>
+            <li>The first column contains an identification (string or number) of each subject (this identifier does not affect the learnt network).</li>
+            <li>All other lines correspond to observations of an individual over time.</li>
+            <li>Missing values can be marked as "?" but should not occur, as the algorithm discards the observation (time slice) in question.</li>
+         </ul>
+         A very simplistic input file example is the following:
+         </p>
+         <pre><code>subject_id,resp__1,age__1,height__1,stunt__1,resp__2,age__2,height__2,stunt__2
+121013, 0, 67, -3, 0, 0, 70, -3, 0
+121113, 0, 27,  2, 0, 0, 30,  0, 0
+121114, 0, 10,  8, 0, 0, 13,  5, 0
+121140, 0, 17,  5, 0, ?,  ?,  ?, ?
+(...)
+</code></pre>
+         <p>
+            Because the algorithm assumes a multinomial distribution, data should be already discretized to guarantee a manageable (i.e., small) number of states for each attribute, taking into account the number of observations. For example, if an attribute is observed 100 times throughout time and 50 different values are recorded, this will generally not provide enough information for learning accurate data dependences.
+         </p>
+         <h4>Example #1</h4>
+         <p>
+            The first example considers a synthetic network structure with 5 attributes, each taking 8 states and with one parent from the preceding slice ([t] denotes the time-slice):
+         </p>
+         <p><img src="images/example1-original.png">            
+         </p>
+         <p>
+            The above network that was sampled to produce the following observations files:
+         <ul>
+            <li><a href="files/synth-N50.csv">synth-N50.csv</a>, with 50 observed time transitions</li>
+            <li><a href="files/synth-N150.csv">synth-N150.csv</a>, with 150 observed time transitions</li>
+            <li><a href="files/synth-N250.csv">synth-N250.csv</a>, with 250 observed time transitions</li>
+         </ul>
+         As all nodes have exactly one parent from the past, the best options are to limit the number of parents with <code>-p 1</code> and use the log-likelihood (LL) score with <code>-s ll</code> to ensure that a maximum number of dependences is retrieved.</p>
+         <p>The command to learn the network with the 50 observations file is
+         </p>
+         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N50.csv -p 1 -s ll</code></pre>
+         <p>
+        and produces the following output:
+         </p>
+         <pre><code>Evaluating network with LL score.
+
+X1_0 -> X0_1
+X2_0 -> X1_1
+X3_0 -> X2_1
+X2_0 -> X3_1
+X3_0 -> X4_1
+
+X0_1 -> X1_1
+X3_1 -> X2_1
+X0_1 -> X3_1
+X3_1 -> X4_1
+</code></pre>
+         <p>
+            Activating the <code>-d</code> switch to directly output in dot format, and redirecting into <a href="http://www.graphviz.org/">Graphviz</a>...
+         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
+         <p>...produces this graph:</p>
+         <p><img src="images/example1-N50.png"></p>
+         <p>
+            Although there are some matches (X2[0]->X3[1] and X3[0]->X4[1]), the learnt network is very different from the original, because the number of observations is low.
+         </p>
+         <p>
+            Using the 250 observations file as input to tDBN ...
+         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N250.csv -p 1 -s ll</code></pre>
+         ... results in the following output, which is a perfect match of the original network:
+         </p>
+         <pre><code>Evaluating network with LL score.
+
+X0_0 -> X0_1
+X1_0 -> X1_1
+X4_0 -> X2_1
+X2_0 -> X3_1
+X3_0 -> X4_1
+
+X1_1 -> X0_1
+X1_1 -> X2_1
+X2_1 -> X3_1
+X2_1 -> X4_1
+</code></pre>
+         <p>An improved visual representation shows the evolution of the learnt networks with the number of observations N (dashed edges are incorrect):
+         </p>
+         <center>
+         <table>
+         <tr>
+         <td><center><img src="images/N50.png"></center></td>
+         <td><center><img src="images/N150.png"></center></td>
+         <td><center><img src="images/N250.png"></center></td>
+         </tr>
+         <tr>
+         <td><center>N=50</center></td>
+         <td><center>N=150</center></td>
+         <td><center>N=250</center></td>
+         </table>
+         </center>
+         <h4>Example #2</h4>
+         <p>
+         In the second example, tDBN will be used to learn a gene regulatory network. Specifically, it will use gene expression data related to the embryonic stage of Drosophila melanogaster [<a href="#ref1">1</a>]. The dataset was preprocessed as described in [<a href="#ref2">2</a>] and can be downloaded <a href="files/drosophila-embryonic.csv">here</a>. </p>
+         
+         <p>As intra-slice dependences in regulatory networks are usually not reported, the option <code>-c</code> omits them by outputting the network in compact form, where each edge represents a dependence between a node at time slice t+1 and its parent at the previous time slice t.</p>
+         
+         <p>For this example, each node will have at most two parents from the previous slice, which is enforced with <code>-p 2</code>. The minimum description length (MDL) criterion further limits the number of parents by preferring simpler network structures. The <code>-s mdl</code> option is currently redundant, as tDBN uses MDL by default.</p>
+         
+         <p>The learning command is thus</p>
+         <pre><code>$ java -jar tDBN-0.1.1.jar -i drosophila-embryonic.csv -p 2 -d -c | \
+  dot -Tpng -o drosophila.png</code></pre>
+  
+        <p>and the resulting network is:</p>
+         <p><img src="images/example2-drosophila-e.png"></p>
+<p>Six out of the eight retrieved regulations (excluding the self-loops) are also reported in [<a href="#ref3">3</a>], indicating a potentially good result of tDBN. It should be noted, however, that the number of observations is quite low and data preprocessing may have not been the same.
+            
+            
+            
+            
+            <!--Advanced usage: tDBN-0.1.1.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
+            
+         <h3><a name="algorithm"></a>The tDBN learning algorithm</h3>
+         <p>
+            The tDBN algorithm jointly learns the optimal intra and inter time-slice connectivity of a DBN by constraining the search space to tree augmented networks.  In a tree-augmented network, attributes (nodes) have at most one parent in the same time-slice, hence the intra-slice connectivity is a tree. An attribute can however have several parents from from preceding slices.
+         </p>
+         <p>
+            The following figure illustrates the structure of a tree-augmented network, with 5 attributes and one parent from the previous time-slice:</p>
+            <p><img src="images/tree-augmented.png"></p>
+
+         <h3>References</h3>
+         <ol>
+            <li><a name="ref1"></a>Arbeitman, Michelle N., et al. "Gene expression during the life cycle of Drosophila melanogaster." Science 297.5590 (2002): 2270-2275.</li>
+            <li><a name="ref2"></a>Zhao, Wentao, Erchin Serpedin, and Edward R. Dougherty. "Inferring gene regulatory networks from time series data using the minimum description length principle." Bioinformatics 22.17 (2006): 2129-2135.</li>
+            <li><a name="ref3"></a>Dondelinger, Frank, Sophie Lèbre, and Dirk Husmeier. "Non-homogeneous dynamic Bayesian networks with Bayesian regularization for inferring gene regulatory networks with gradually time-varying structure." Machine learning 90.2 (2013): 191-230.</li>
+         </ol>
+      </section>
+      <footer>
+         <p>This project is maintained by <a href="https://github.com/josemonteiro">josemonteiro</a></p>
+         <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+   </body>
+</html>
+
