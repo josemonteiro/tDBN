@@ -3,7 +3,7 @@ tlDBN
 
 com.gihub.tDBN.cli.LearnFromFile
 
-<pre>
+```
 usage:
  -c,--compact                 Outputs network in compact format, ommiting
                               intra-slice edges. Only works if specified
@@ -25,4 +25,4 @@ usage:
                               default, root is arbitrary.
  -s,--scoringFunction <arg>   Scoring function to be used, either MDL or
                               LL. MDL is used by default.
-</pre>
+```
