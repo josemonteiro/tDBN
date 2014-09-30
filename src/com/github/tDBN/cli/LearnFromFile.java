@@ -48,18 +48,18 @@ public class LearnFromFile {
 
 		Option dotFormat = OptionBuilder
 				.withDescription(
-						"Outputs network in dot format, allowing direct use with GraphViz to visualize the graph.")
+						"Outputs network in dot format, allowing direct redirection into Graphviz to visualize the graph.")
 				.withLongOpt("dotFormat").create("d");
 
 		Option compact = OptionBuilder
 				.withDescription(
-						"Outputs network in compact format, ommiting intra-slice edges. Only works if specified together with -d and with --markovLag 1.")
+						"Outputs network in compact format, omitting intra-slice edges. Only works if specified together with -d and with --markovLag 1.")
 				.withLongOpt("compact").create("c");
 
 		Option maxMarkovLag = OptionBuilder
 				.hasArg()
 				.withDescription(
-						"Maximum Markov lag to be considered, which is the longest distance between connected time slices. Default is 1, allowing edges from one preceeding slice.")
+						"Maximum Markov lag to be considered, which is the longest distance between connected time slices. Default is 1, allowing edges from one preceding slice.")
 				.withLongOpt("markovLag").create("l");
 
 		options.addOption(inputFile);
@@ -76,6 +76,8 @@ public class LearnFromFile {
 
 			CommandLine cmd = parser.parse(options, args);
 
+			boolean verbose = !cmd.hasOption("d");
+
 			int markovLag = 1;
 			if (cmd.hasOption("l")) {
 				markovLag = Integer.parseInt(cmd.getOptionValue("l"));
@@ -86,10 +88,12 @@ public class LearnFromFile {
 
 			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), true);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
-				System.out.println("Evaluating network with LL score.");
+				if (verbose)
+					System.out.println("Evaluating network with LL score.");
 				s.evaluate(new LLScoringFunction());
 			} else {
-				System.out.println("Evaluating network with MDL score.");
+				if (verbose)
+					System.out.println("Evaluating network with MDL score.");
 				s.evaluate(new MDLScoringFunction());
 			}
 
@@ -97,7 +101,8 @@ public class LearnFromFile {
 
 			if (cmd.hasOption("r")) {
 				int r = Integer.parseInt(cmd.getOptionValue("r"));
-				System.out.println("Root node specified: " + r);
+				if (verbose)
+					System.out.println("Root node specified: " + r);
 				dbn = s.toDBN(r);
 			} else {
 				// System.out.println("No root specified.");

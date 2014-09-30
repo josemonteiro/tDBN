@@ -164,7 +164,7 @@ public class Observations {
 		int n = numAttributes();
 		this.usefulObservationsHeader = new String[n];
 		for (int i = 0; i < n; i++)
-			usefulObservationsHeader[i] = "attribute" + i;
+			usefulObservationsHeader[i] = "X" + i;
 
 		// assume same subjects over all transitions
 		this.subjectIsPresent = new LinkedHashMap<String, boolean[]>((int) Math.ceil(totalNumSubjects / 0.75));
