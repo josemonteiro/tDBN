@@ -30,15 +30,15 @@ public class LearnFromFile {
 				.withDescription("Input CSV file to be used for network learning.").withLongOpt("inputFile")
 				.create("i");
 
-		Option numParents = OptionBuilder.hasArg().isRequired()
-				.withDescription("Maximum number of parents from preceding time slice(s).").withLongOpt("numParents")
+		Option numParents = OptionBuilder.withArgName("int").hasArg().isRequired()
+				.withDescription("Maximum number of parents from preceding time-slice(s).").withLongOpt("numParents")
 				.create("p");
 
 		Option outputFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("Writes output to <file>. If not supplied, output is written to terminal.")
 				.withLongOpt("outputFile").create("o");
 
-		Option rootNode = OptionBuilder.withArgName("node").hasArg()
+		Option rootNode = OptionBuilder.withArgName("int").hasArg()
 				.withDescription("Root node of the intra-slice tree. By default, root is arbitrary.")
 				.withLongOpt("root").create("r");
 
@@ -57,10 +57,11 @@ public class LearnFromFile {
 				.withLongOpt("compact").create("c");
 
 		Option maxMarkovLag = OptionBuilder
+				.withArgName("int")
 				.hasArg()
 				.withDescription(
-						"Maximum Markov lag to be considered, which is the longest distance between connected time slices. Default is 1, allowing edges from one preceding slice.")
-				.withLongOpt("markovLag").create("l");
+						"Maximum Markov lag to be considered, which is the longest distance between connected time-slices. Default is 1, allowing edges from one preceding slice.")
+				.withLongOpt("markovLag").create("m");
 
 		options.addOption(inputFile);
 		options.addOption(numParents);
@@ -78,15 +79,12 @@ public class LearnFromFile {
 
 			boolean verbose = !cmd.hasOption("d");
 
-			int markovLag = 1;
-			if (cmd.hasOption("l")) {
-				markovLag = Integer.parseInt(cmd.getOptionValue("l"));
-				// TODO: check sanity
-			}
+			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
+			// TODO: check sanity
 
 			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
 
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), true);
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), true, verbose);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
@@ -96,6 +94,9 @@ public class LearnFromFile {
 					System.out.println("Evaluating network with MDL score.");
 				s.evaluate(new MDLScoringFunction());
 			}
+
+			// if (verbose)
+			// System.out.println(s);
 
 			DynamicBayesNet dbn;
 
