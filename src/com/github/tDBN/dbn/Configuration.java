@@ -38,7 +38,24 @@ public class Configuration {
 
 	@Override
 	public String toString() {
-		return Arrays.toString(configuration);
+		// return Arrays.toString(configuration);
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		int n = attributes.size();
+		for (int i = 0; i < configuration.length; i++) {
+			if (configuration[i] != -1) {
+				int lag = i / n;
+				int id = i % n;
+				sb.append(attributes.get(id).getName() + "[" + lag + "]=" + attributes.get(id).get(configuration[i]));
+				sb.append(", ");
+			}
+		}
+		// Readable version
+		if (sb.length() > 0) {
+			sb.setLength(sb.length() - 2);
+		}
+		sb.append("]");
+		return sb.toString();
 	}
 
 	@Override

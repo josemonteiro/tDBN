@@ -1,6 +1,5 @@
 package com.github.tDBN.dbn;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -35,17 +34,16 @@ public class Observations {
 	private int[][][] usefulObservations;
 
 	/**
-	 * Three-dimensional matrix of observation data that will be present in the
-	 * output, but not used for network learning.
+	 * Three-dimensional matrix of non-coded observation data that will be
+	 * present in the output, but not used for network learning.
 	 * <ul>
-	 * <li>the 1st index refers to the time slice t;
+	 * <li>the 1st index refers to the transition {t - markovLag + 1, ...
+	 * ,t}->t+1;
 	 * <li>the 2nd index refers to the the subject (set of observed attributes);
-	 * <li>the 3rd index refers to the (not for use) attribute.
+	 * <li>the 3rd index refers to the (not for learning) attribute.
 	 * </ul>
 	 */
 	private String[][][] passiveObservations = null;
-
-	// note the difference between transition and time slice in the 1st index
 
 	/**
 	 * Indicates, for each subject, what observations are present. Subject ID is
@@ -308,7 +306,7 @@ public class Observations {
 
 			// fill attributes from first observation (get their type)
 			// it must not have missing values
-			String[] firstObservation = Arrays.copyOf(dataLine, numAttributes);
+			String[] firstObservation = Arrays.copyOfRange(dataLine, 1, numAttributes + 1);
 			if (countMissingValues(firstObservation) > 0) {
 				System.err.println(firstObservation);
 				System.err.println("First observation contains missing values.");
@@ -409,19 +407,22 @@ public class Observations {
 				// get first line
 				String[] header = li.next();
 
-				int numTimeSlices = numTransitions() + markovLag;
+				int numTransitions = numTransitions();
+				int numTimeSlices = numTransitions + markovLag;
 				int totalNumSubjects = subjectIsPresent.size();
 				int numPassiveAttributes = (header.length - 1) / numTimeSlices;
 
 				passiveObservationsHeader = processHeader(header, numPassiveAttributes);
 
 				// allocate observations matrix
-				passiveObservations = new String[numTimeSlices][totalNumSubjects][numPassiveAttributes];
+				passiveObservations = new String[numTransitions][totalNumSubjects][(markovLag + 1)
+						* numPassiveAttributes];
 
-				int s = 0;
+				int[] tempNumSubjects = new int[numTransitions];
+
 				while (li.hasNext()) {
 					String[] dataLine = li.next();
-					if (dataLine.length - 1 != numTimeSlices * numPassiveAttributes) {
+					if (dataLine.length != numTimeSlices * numPassiveAttributes + 1) {
 						System.err.println(Arrays.deepToString(dataLine));
 						System.err
 								.println("Passive observations file: input data line does not have the correct number of columns.");
@@ -433,14 +434,19 @@ public class Observations {
 
 					String subject = dataLine[0];
 					if (subjectIsPresent.containsKey(subject)) {
-						for (int t = 0; t < numTimeSlices; t++) {
-							passiveObservations[t][s] = Arrays.copyOfRange(dataLine, 1 + t * numPassiveAttributes, 1
-									+ (t + 1) * numPassiveAttributes);
+						for (int t = 0; t < numTransitions; t++) {
+							if (subjectIsPresent.get(subject)[t]) {
+								passiveObservations[t][tempNumSubjects[t]] = Arrays.copyOfRange(dataLine, 1 + t
+										* numPassiveAttributes, 1 + (t + markovLag + 1) * numPassiveAttributes);
+								tempNumSubjects[t]++;
+							}
 						}
-						s++;
-					} else
-						System.out.println("Skipping subject " + subject + " on passive observations file.");
+					}
+					// else
+					// System.out.println("Skipping subject " + subject +
+					// " on passive observations file.");
 				}
+
 			} catch (IOException e) {
 				System.err.println("File " + passiveObservationsFileName + " could not be opened.");
 				e.printStackTrace();
@@ -502,6 +508,14 @@ public class Observations {
 		for (int s = 0; s < numSubjects; s++)
 			initialObservations.add(Arrays.copyOfRange(usefulObservations[0][s], 0, markovLag * numAttributes()));
 		return initialObservations;
+	}
+
+	public int[][][] getObservationsMatrix() {
+		return usefulObservations;
+	}
+
+	public String[][][] getPassiveObservationsMatrix() {
+		return passiveObservations;
 	}
 
 	/**
@@ -646,8 +660,8 @@ public class Observations {
 
 	}
 
-	private int numPassiveAttributes() {
-		return passiveObservations != null ? passiveObservations[0][0].length : 0;
+	public int numPassiveAttributes() {
+		return passiveObservations != null ? passiveObservations[0][0].length / (markovLag + 1) : 0;
 	}
 
 	public int getMarkovLag() {
@@ -749,36 +763,8 @@ public class Observations {
 
 	}
 
-	public static void main(String[] args) {
-
-		Observations o1 = new Observations(args[0], args[1], 2);
-		System.out.println(o1);
-
-		boolean statProc = true;
-		int numParents = 2;
-
-		System.out.println("initializing scores");
-		Scores s1 = new Scores(o1, numParents, statProc);
-		System.out.println("evaluating scores");
-		s1.evaluate(new MDLScoringFunction());
-		System.out.println(s1);
-
-		System.out.println("converting to DBN");
-		DynamicBayesNet dbn1 = s1.toDBN();
-
-		try {
-			Utils.writeToFile("/home/zlm/dot.dot", dbn1.toDot(false));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		System.out.println("learning DBN parameters");
-		dbn1.learnParameters(o1, statProc);
-
-		System.out.println("forecasting observations");
-		dbn1.forecast(o1, 5, statProc).writeToFile();
-
+	public static void main(String args[]) {
+		System.out.println(new Observations(args[0]));
 	}
 
 }

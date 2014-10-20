@@ -48,14 +48,17 @@ public class Scores {
 
 	private boolean evaluated = false;
 
+	private boolean verbose;
+
 	public Scores(Observations observations, int maxParents) {
-		this(observations, maxParents, false);
+		this(observations, maxParents, false, true);
 	}
 
-	public Scores(Observations observations, int maxParents, boolean stationaryProcess) {
+	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose) {
 		this.observations = observations;
 		this.maxParents = maxParents;
 		this.stationaryProcess = stationaryProcess;
+		this.verbose = verbose;
 
 		int n = this.observations.numAttributes();
 		int p = this.maxParents;
@@ -111,6 +114,9 @@ public class Scores {
 		int n = observations.numAttributes();
 		int numTransitions = scoresMatrix.length;
 
+		int[] numBestScoresPast = new int[n];
+		int[][] numBestScores = new int[n][n];
+
 		for (int t = 0; t < numTransitions; t++) {
 			// System.out.println("evaluating score in transition " + t + "/" +
 			// numTransitions);
@@ -123,7 +129,9 @@ public class Scores {
 					if (bestScore < score) {
 						bestScore = score;
 						parentNodesPast.get(t).set(i, parentSet);
-					}
+						numBestScoresPast[i] = 1;
+					} else if (bestScore == score)
+						numBestScoresPast[i]++;
 				}
 				for (int j = 0; j < n; j++) {
 					scoresMatrix[t][i][j] = -bestScore;
@@ -143,7 +151,9 @@ public class Scores {
 							if (bestScore < score) {
 								bestScore = score;
 								parentNodes.get(t).get(i).set(j, parentSet);
-							}
+								numBestScores[i][j] = 1;
+							} else if (bestScore == score)
+								numBestScores[i][j]++;
 						}
 
 						scoresMatrix[t][i][j] += bestScore;
@@ -154,6 +164,19 @@ public class Scores {
 		}
 
 		evaluated = true;
+
+		if (verbose) {
+			// System.out.println(Arrays.toString(numBestScoresPast));
+			// System.out.println(Arrays.deepToString(numBestScores));
+			long numSolutions = 1;
+			for (int i = 0; i < n; i++)
+				numSolutions *= numBestScoresPast[i];
+			for (int i = 0; i < n; i++)
+				for (int j = 0; j < n; j++)
+					if (i != j)
+						numSolutions *= numBestScores[i][j];
+			System.out.println("Number of networks with max score: " + numSolutions);
+		}
 
 		return this;
 
@@ -221,6 +244,14 @@ public class Scores {
 
 			List<Edge> intraRelations = OptimumBranching.evaluate(scoresMatrix[t], root);
 
+			if (verbose) {
+				double score = 0;
+				for (Edge e : intraRelations)
+					score += e.getWeight();
+
+				System.out.println("Network score: " + score);
+			}
+
 			List<Edge> interRelations = new ArrayList<Edge>(n * maxParents);
 
 			boolean[] hasParent = new boolean[n];
@@ -262,10 +293,10 @@ public class Scores {
 		int numTransitions = scoresMatrix.length;
 
 		for (int t = 0; t < numTransitions; t++) {
-			sb.append("--- Transition " + t + " ---" + ls);
-			sb.append("Maximum number of parents in t: " + maxParents + ls);
-
-			sb.append(ls);
+			// sb.append("--- Transition " + t + " ---" + ls);
+			// sb.append("Maximum number of parents in t: " + maxParents + ls);
+			//
+			// sb.append(ls);
 
 			sb.append("Scores matrix:" + ls);
 			for (int i = 0; i < n; i++) {
@@ -275,30 +306,30 @@ public class Scores {
 				sb.append(ls);
 			}
 
-			sb.append(ls);
-
-			sb.append("Parents only in t:" + ls);
-			for (int i = 0; i < n; i++) {
-				sb.append(i + ": " + parentNodesPast.get(t).get(i) + ls);
-			}
-
-			sb.append(ls);
-
-			sb.append("Parents in t for each parent in t+1:" + ls);
-			sb.append("t+1:	");
-			for (int i = 0; i < n; i++) {
-				sb.append(i + "	");
-			}
-			sb.append(ls);
-			for (int i = 0; i < n; i++) {
-				sb.append(i + ":	");
-				for (int j = 0; j < n; j++) {
-					sb.append(parentNodes.get(t).get(i).get(j) + "	");
-				}
-				sb.append(ls);
-			}
-
-			sb.append(ls);
+			// sb.append(ls);
+			//
+			// sb.append("Parents only in t:" + ls);
+			// for (int i = 0; i < n; i++) {
+			// sb.append(i + ": " + parentNodesPast.get(t).get(i) + ls);
+			// }
+			//
+			// sb.append(ls);
+			//
+			// sb.append("Parents in t for each parent in t+1:" + ls);
+			// sb.append("t+1:	");
+			// for (int i = 0; i < n; i++) {
+			// sb.append(i + "	");
+			// }
+			// sb.append(ls);
+			// for (int i = 0; i < n; i++) {
+			// sb.append(i + ":	");
+			// for (int j = 0; j < n; j++) {
+			// sb.append(parentNodes.get(t).get(i).get(j) + "	");
+			// }
+			// sb.append(ls);
+			// }
+			//
+			// sb.append(ls);
 		}
 
 		return sb.toString();
