@@ -38,7 +38,7 @@ public class DynamicBayesNet {
 		learnParameters(o, false);
 	}
 
-	public void learnParameters(Observations o, boolean stationaryProcess) {
+	public String learnParameters(Observations o, boolean stationaryProcess) {
 
 		if (stationaryProcess) {
 			// assert there is only one transition network
@@ -46,7 +46,7 @@ public class DynamicBayesNet {
 				throw new IllegalArgumentException("DBN has more than one transition network, cannot "
 						+ "learn parameters considering a stationary process");
 
-			transitionNets.get(0).learnParameters(o, -1);
+			return transitionNets.get(0).learnParameters(o, -1);
 
 		} else {
 			int T = transitionNets.size();
@@ -54,6 +54,7 @@ public class DynamicBayesNet {
 				transitionNets.get(t).learnParameters(o, t);
 			}
 		}
+		return null;
 	}
 
 	public Observations generateObservations(int numIndividuals) {
@@ -61,11 +62,12 @@ public class DynamicBayesNet {
 	}
 
 	public Observations generateObservations(int numIndividuals, int numTransitions, boolean stationaryProcess) {
-		int[][][] obsMatrix = generateObservationsMatrix(null, numIndividuals, numTransitions, stationaryProcess);
+		int[][][] obsMatrix = generateObservationsMatrix(null, numIndividuals, numTransitions, stationaryProcess, false);
 		return new Observations(attributes, obsMatrix);
 	}
 
-	public Observations forecast(Observations originalObservations, int numTransitions, boolean stationaryProcess) {
+	public Observations forecast(Observations originalObservations, int numTransitions, boolean stationaryProcess,
+			boolean mostProbable) {
 		if (stationaryProcess) {
 			// assert there is only one transition network
 			if (transitionNets.size() > 1)
@@ -75,12 +77,12 @@ public class DynamicBayesNet {
 		}
 		List<int[]> initialObservations = originalObservations.getFirst();
 		int[][][] obsMatrix = generateObservationsMatrix(initialObservations, initialObservations.size(),
-				numTransitions, stationaryProcess);
+				numTransitions, stationaryProcess, mostProbable);
 		return new Observations(originalObservations, obsMatrix);
 	}
 
 	public Observations forecast(Observations originalObservations) {
-		return forecast(originalObservations, transitionNets.size(), false);
+		return forecast(originalObservations, transitionNets.size(), false, false);
 	}
 
 	/**
@@ -91,7 +93,7 @@ public class DynamicBayesNet {
 	 * @return
 	 */
 	private int[][][] generateObservationsMatrix(List<int[]> initialObservations, int numIndividuals,
-			int numTransitions, boolean stationaryProcess) {
+			int numTransitions, boolean stationaryProcess, boolean mostProbable) {
 		// System.out.println("generating observations");
 
 		if (!stationaryProcess && numTransitions > transitionNets.size())
@@ -104,13 +106,13 @@ public class DynamicBayesNet {
 
 		for (int subject = 0; subject < numIndividuals; subject++) {
 			int[] observation0 = initialObservations != null ? initialObservations.get(subject) : initialNet
-					.nextObservation(null);
+					.nextObservation(null, mostProbable);
 			int[] observationT = observation0;
 			for (int transition = 0; transition < numTransitions; transition++) {
 				System.arraycopy(observationT, 0, obsMatrix[transition][subject], 0, n * markovLag);
 
-				int[] observationTplus1 = stationaryProcess ? transitionNets.get(0).nextObservation(observationT)
-						: transitionNets.get(transition).nextObservation(observationT);
+				int[] observationTplus1 = stationaryProcess ? transitionNets.get(0).nextObservation(observationT,
+						mostProbable) : transitionNets.get(transition).nextObservation(observationT, mostProbable);
 				System.arraycopy(observationTplus1, 0, obsMatrix[transition][subject], n * markovLag, n);
 
 				observationT = Arrays.copyOfRange(obsMatrix[transition][subject], n, (markovLag + 1) * n);

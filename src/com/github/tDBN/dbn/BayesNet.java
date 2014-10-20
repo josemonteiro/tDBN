@@ -150,7 +150,7 @@ public class BayesNet {
 		learnParameters(o, -1);
 	}
 
-	public void learnParameters(Observations o, int transition) {
+	public String learnParameters(Observations o, int transition) {
 
 		if (o.getAttributes() != this.attributes) {
 			throw new IllegalArgumentException("Attributes of the observations don't"
@@ -193,11 +193,19 @@ public class BayesNet {
 
 					int range = c.getChildRange();
 					List<Double> probabilities = new ArrayList<Double>(range - 1);
-					// count for all except one of possible child values
-					for (int j = range - 1; j-- > 0;) {
-						int Nijk = o.count(c, transition);
-						probabilities.add(1.0 * Nijk / Nij);
-						c.nextChild();
+
+					// no data found for given configuration
+					if (Nij == 0) {
+						for (int j = range - 1; j-- > 0;)
+							// assume uniform distribution
+							probabilities.add(1.0 / range);
+					} else {
+						// count for all except one of possible child values
+						for (int j = range - 1; j-- > 0;) {
+							int Nijk = o.count(c, transition);
+							probabilities.add(1.0 * Nijk / Nij);
+							c.nextChild();
+						}
 					}
 					// important, configuration is index by parents only
 					// child must be reset
@@ -207,6 +215,14 @@ public class BayesNet {
 			}
 
 		}
+
+		StringBuilder sb = new StringBuilder();
+		String ls = System.getProperty("line.separator");
+		for (Map<Configuration, List<Double>> cpt : parameters)
+			sb.append(Arrays.toString(cpt.entrySet().toArray()) + ls);
+
+		return sb.toString();
+
 	}
 
 	private List<Double> generateProbabilities(int numValues) {
@@ -236,24 +252,46 @@ public class BayesNet {
 		return probabilities;
 	}
 
-	public int[] nextObservation(int[] previousObservation) {
+	public int[] nextObservation(int[] previousObservation, boolean mostProbable) {
 		MutableConfiguration c = new MutableConfiguration(attributes, markovLag, previousObservation);
 		for (int node : topologicalOrder) {
 			Configuration indexParameters = c.applyMask(parentNodes.get(node), node);
 			List<Double> probabilities = parameters.get(node).get(indexParameters);
 
-			// random sampling
-			double sample = r.nextDouble();
+			int size = probabilities.size();
+			int value;
 
-			double accum = probabilities.get(0);
-			int value = 0;
-
-			while (sample > accum) {
-				if (!(value < probabilities.size() - 1)) {
-					++value;
-					break;
+			if (mostProbable) {
+				int maxIndex = -1;
+				double max = 0;
+				double sum = 0;
+				for (int i = 0; i < size; i++) {
+					double p = probabilities.get(i);
+					sum += p;
+					if (max < p) {
+						max = p;
+						maxIndex = i;
+					}
 				}
-				accum += probabilities.get(++value);
+				if (max < 1 - sum)
+					maxIndex = size;
+				value = maxIndex;
+			}
+
+			// random sampling
+			else {
+				double sample = r.nextDouble();
+
+				double accum = probabilities.get(0);
+				value = 0;
+
+				while (sample > accum) {
+					if (!(value < size - 1)) {
+						++value;
+						break;
+					}
+					accum += probabilities.get(++value);
+				}
 			}
 
 			c.update(node, value);
@@ -401,6 +439,24 @@ public class BayesNet {
 		for (int i = probabilities.size(); i-- > 0;)
 			sum += probabilities.get(i);
 		System.out.println(sum);
+
+		int size = probabilities.size();
+		int maxIndex = -1;
+		double max = 0;
+		sum = 0;
+		for (int i = 0; i < size; i++) {
+			double p = probabilities.get(i);
+			sum += p;
+			if (max < p) {
+				max = p;
+				maxIndex = i;
+			}
+		}
+
+		if (max < 1 - sum)
+			maxIndex = size;
+
+		System.out.println("Most probable: " + maxIndex);
 
 		// sample from given probability vector
 
