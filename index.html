@@ -23,7 +23,7 @@
          <p>Released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></p>
          <p class="view"><a href="https://github.com/josemonteiro/tDBN">View the Project on GitHub <small>josemonteiro/tDBN</small></a></p>
          <ul>
-            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.1/tDBN-0.1.1.jar">Download release <strong>tDBN-0.1.1</strong></a></li>
+            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.2/tDBN-0.1.2.jar">Download release <strong>tDBN-0.1.2</strong></a></li>
             <li><a href="https://github.com/josemonteiro/tDBN/zipball/master">Download current <strong>sources</strong></a></li>
          </ul>
       </header>
@@ -34,7 +34,7 @@
          </p>
          <h4>Current release</h4>
          <p>
-            The program's current release (2014.10.01) is tDBN-0.1.1, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.1/tDBN-0.1.1.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
+            The program's current release (2014.10.20) is tDBN-0.1.2, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.2/tDBN-0.1.2.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
          </p>
          <h4>Libraries</h4>
          <p>
@@ -48,7 +48,7 @@ available options.
          
          <h3>Usage</h3>
          <p>By executing the jar file ...
-         <pre><code>$ java -jar tDBN-0.1.1.jar</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.2.jar</code></pre>
          ... the available command-line options are shown:
          </p>
          <pre><code>usage: tDBN
@@ -60,15 +60,15 @@ available options.
                               visualize the graph.
  -i,--inputFile &lt;file&gt;        Input CSV file to be used for network
                               learning.
- -l,--markovLag &lt;arg&gt;         Maximum Markov lag to be considered, which
+ -m,--markovLag &lt;int&gt;         Maximum Markov lag to be considered, which
                               is the longest distance between connected
-                              time slices. Default is 1, allowing edges
+                              time-slices. Default is 1, allowing edges
                               from one preceding slice.
  -o,--outputFile &lt;file&gt;       Writes output to &lt;file&gt;. If not supplied,
                               output is written to terminal.
- -p,--numParents &lt;arg&gt;        Maximum number of parents from preceding
-                              time slice(s).
- -r,--root &lt;node&gt;             Root node of the intra-slice tree. By
+ -p,--numParents &lt;int&gt;        Maximum number of parents from preceding
+                              time-slice(s).
+ -r,--root &lt;int&gt;              Root node of the intra-slice tree. By
                               default, root is arbitrary.
  -s,--scoringFunction &lt;arg&gt;   Scoring function to be used, either MDL or
                               LL. MDL is used by default.
@@ -110,11 +110,13 @@ available options.
          As all nodes have exactly one parent from the past, the best options are to limit the number of parents with <code>-p 1</code> and use the log-likelihood (LL) score with <code>-s ll</code> to ensure that a maximum number of dependences is retrieved.</p>
          <p>The command to learn the network with the 50 observations file is
          </p>
-         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N50.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N50.csv -p 1 -s ll</code></pre>
          <p>
         and produces the following output:
          </p>
          <pre><code>Evaluating network with LL score.
+Number of networks with max score: 2
+Network score: 202.75732463763217
 
 X1_0 -> X0_1
 X2_0 -> X1_1
@@ -129,7 +131,7 @@ X3_1 -> X4_1
 </code></pre>
          <p>
             Activating the <code>-d</code> switch to directly output in dot format, and redirecting into <a href="http://www.graphviz.org/">Graphviz</a>...
-         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
          <p>...produces this graph:</p>
          <p><img src="images/example1-N50.png"></p>
          <p>
@@ -137,10 +139,12 @@ X3_1 -> X4_1
          </p>
          <p>
             Using the 250 observations file as input to tDBN ...
-         <pre><code>$ java -jar tDBN-0.1.1.jar -i synth-N250.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N250.csv -p 1 -s ll</code></pre>
          ... results in the following output, which is a perfect match of the original network:
          </p>
          <pre><code>Evaluating network with LL score.
+Number of networks with max score: 1
+Network score: 829.3579534531533
 
 X0_0 -> X0_1
 X1_0 -> X1_1
@@ -177,17 +181,17 @@ X2_1 -> X4_1
          <p>For this example, each node will have at most two parents from the previous slice, which is enforced with <code>-p 2</code>. The minimum description length (MDL) criterion further limits the number of parents by preferring simpler network structures. The <code>-s mdl</code> option is currently redundant, as tDBN uses MDL by default.</p>
          
          <p>The learning command is thus</p>
-         <pre><code>$ java -jar tDBN-0.1.1.jar -i drosophila-embryonic.csv -p 2 -d -c | \
+         <pre><code>$ java -jar tDBN-0.1.2.jar -i drosophila-embryonic.csv -p 2 -d -c | \
   dot -Tpng -o drosophila.png</code></pre>
   
         <p>and the resulting network is:</p>
          <p><img src="images/example2-drosophila-e.png"></p>
-<p>Six out of the eight retrieved regulations (excluding the self-loops) are also reported in [<a href="#ref3">3</a>], indicating a potentially good result of tDBN. It should be noted, however, that the number of observations is quite low and data preprocessing may have not been the same.
+<p>Six out of the eight retrieved regulations (excluding the self-loops) are also reported in [<a href="#ref3">3</a>], indicating a potentially good result of tDBN. It should be noted, however, that data preprocessing may have not been the same, and that the number of observations is quite low, thus leading to many networks with maximum score.
             
             
             
             
-            <!--Advanced usage: tDBN-0.1.1.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
+            <!--Advanced usage: tDBN-0.1.2.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
             
          <h3><a name="algorithm"></a>The tDBN learning algorithm</h3>
          <p>
