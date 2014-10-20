@@ -3,9 +3,11 @@ package com.github.tDBN.dbn;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 import com.github.tDBN.utils.DisjointSets;
 import com.github.tDBN.utils.Edge;
@@ -48,7 +50,9 @@ public class OptimumBranching {
 		Deque<Integer> vertices = new ArrayDeque<Integer>(n);
 
 		// stupid initialization
-		int root = finalRoot;
+		Set<Integer> roots = new HashSet<Integer>();
+		if (finalRoot >= 0)
+			roots.add(finalRoot);
 
 		for (int i = 0; i < n; i++) {
 
@@ -90,7 +94,7 @@ public class OptimumBranching {
 			// containing all vertices
 			if (inEdges.isEmpty()) {
 				// root of the final MWDST
-				root = min[r];
+				roots.add(min[r]);
 			}
 
 			else {
@@ -102,71 +106,75 @@ public class OptimumBranching {
 						maxIndex = i;
 				// edge is deleted from I[r]
 				Edge heaviest = inEdges.remove(maxIndex);
+				if (heaviest.getWeight() <= 0) {
+					roots.add(min[r]);
+				} else {
 
-				int i = heaviest.getTail();
-				int j = heaviest.getHead();
-				int iWeakComponentRoot = wcc.find(i);
-				int jWeakComponentRoot = wcc.find(j);
+					int i = heaviest.getTail();
+					int j = heaviest.getHead();
+					int iWeakComponentRoot = wcc.find(i);
+					int jWeakComponentRoot = wcc.find(j);
 
-				// add heaviest edge to forest of edges
-				TreeNode<Edge> tn = forest.add(heaviest, cycleEdges.get(r));
-				if (cycleEdges.get(r).isEmpty()) {
-					forestLeaf.set(j, tn); // points leaf edge in F
-				}
-
-				// no cycle is created by heaviest edge
-				if (iWeakComponentRoot != jWeakComponentRoot) {
-					// join i and j in the same weakly-connected set
-					wcc.union(iWeakComponentRoot, jWeakComponentRoot);
-					// heaviest is the only chosen edge incident on r
-					enteringEdge.set(r, heaviest);
-				}
-
-				// heaviest edge introduces a cycle
-				else {
-					// reset cycle edges
-					cycleEdges.get(r).clear();
-
-					Edge lightest = heaviest;
-					// find cycle edges and obtain the lightest one
-					for (Edge cycleEdge = heaviest; cycleEdge != null; cycleEdge = enteringEdge.get(scc.find(cycleEdge
-							.getTail()))) {
-
-						if (cycleEdge.getWeight() < lightest.getWeight())
-							lightest = cycleEdge;
-
-						// add (x,y) to the list of cycle edges
-						cycleEdges.get(r).add(cycleEdge);
+					// add heaviest edge to forest of edges
+					TreeNode<Edge> tn = forest.add(heaviest, cycleEdges.get(r));
+					if (cycleEdges.get(r).isEmpty()) {
+						forestLeaf.set(j, tn); // points leaf edge in F
 					}
 
-					// update incident edges on r
-					for (Edge e : inEdges) {
-						e.setWeight(e.getWeight() + lightest.getWeight() - heaviest.getWeight());
+					// no cycle is created by heaviest edge
+					if (iWeakComponentRoot != jWeakComponentRoot) {
+						// join i and j in the same weakly-connected set
+						wcc.union(iWeakComponentRoot, jWeakComponentRoot);
+						// heaviest is the only chosen edge incident on r
+						enteringEdge.set(r, heaviest);
 					}
 
-					// keep track of root for the spanning tree
-					min[r] = min[scc.find(lightest.getHead())];
+					// heaviest edge introduces a cycle
+					else {
+						// reset cycle edges
+						cycleEdges.get(r).clear();
 
-					// loop over cycle edges excluding heaviest
-					for (Edge cycleEdge = enteringEdge.get(scc.find(i)); cycleEdge != null; cycleEdge = enteringEdge
-							.get(scc.find(cycleEdge.getTail()))) {
+						Edge lightest = heaviest;
+						// find cycle edges and obtain the lightest one
+						for (Edge cycleEdge = heaviest; cycleEdge != null; cycleEdge = enteringEdge.get(scc
+								.find(cycleEdge.getTail()))) {
 
-						int headStrongComponentRoot = scc.find(cycleEdge.getHead());
+							if (cycleEdge.getWeight() < lightest.getWeight())
+								lightest = cycleEdge;
 
-						// update incident edges on other nodes of the cycle
-						for (Edge e : incidentEdges.get(headStrongComponentRoot)) {
-							e.setWeight(e.getWeight() + lightest.getWeight() - cycleEdge.getWeight());
+							// add (x,y) to the list of cycle edges
+							cycleEdges.get(r).add(cycleEdge);
 						}
 
-						// join vertices of the cycle into one scc
-						scc.union(r, headStrongComponentRoot);
+						// update incident edges on r
+						for (Edge e : inEdges) {
+							e.setWeight(e.getWeight() + lightest.getWeight() - heaviest.getWeight());
+						}
 
-						// join incident edges lists;
-						incidentEdges.set(r,
-								merge(incidentEdges.get(r), incidentEdges.get(headStrongComponentRoot), scc, r));
+						// keep track of root for the spanning tree
+						min[r] = min[scc.find(lightest.getHead())];
+
+						// loop over cycle edges excluding heaviest
+						for (Edge cycleEdge = enteringEdge.get(scc.find(i)); cycleEdge != null; cycleEdge = enteringEdge
+								.get(scc.find(cycleEdge.getTail()))) {
+
+							int headStrongComponentRoot = scc.find(cycleEdge.getHead());
+
+							// update incident edges on other nodes of the cycle
+							for (Edge e : incidentEdges.get(headStrongComponentRoot)) {
+								e.setWeight(e.getWeight() + lightest.getWeight() - cycleEdge.getWeight());
+							}
+
+							// join vertices of the cycle into one scc
+							scc.union(r, headStrongComponentRoot);
+
+							// join incident edges lists;
+							incidentEdges.set(r,
+									merge(incidentEdges.get(r), incidentEdges.get(headStrongComponentRoot), scc, r));
+						}
+
+						vertices.push(r);
 					}
-
-					vertices.push(r);
 				}
 			}
 		}
@@ -175,9 +183,11 @@ public class OptimumBranching {
 
 		// System.out.println(forest);
 
-		TreeNode<Edge> rootLeaf = forestLeaf.get(root);
-		if (rootLeaf != null) {
-			forest.deleteUp(rootLeaf);
+		for (int root : roots) {
+			TreeNode<Edge> rootLeaf = forestLeaf.get(root);
+			if (rootLeaf != null) {
+				forest.deleteUp(rootLeaf);
+			}
 		}
 
 		while (!forest.isEmpty()) {
