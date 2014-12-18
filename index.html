@@ -23,7 +23,7 @@
          <p>Released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></p>
          <p class="view"><a href="https://github.com/josemonteiro/tDBN">View the Project on GitHub <small>josemonteiro/tDBN</small></a></p>
          <ul>
-            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.2/tDBN-0.1.2.jar">Download release <strong>tDBN-0.1.2</strong></a></li>
+            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.3/tDBN-0.1.3.jar">Download release <strong>tDBN-0.1.3</strong></a></li>
             <li><a href="https://github.com/josemonteiro/tDBN/zipball/master">Download current <strong>sources</strong></a></li>
          </ul>
       </header>
@@ -34,7 +34,7 @@
          </p>
          <h4>Current release</h4>
          <p>
-            The program's current release (2014.10.20) is tDBN-0.1.2, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.2/tDBN-0.1.2.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
+            The program's current release (2014.12.19) is tDBN-0.1.3, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.3/tDBN-0.1.3.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
          </p>
          <h4>Libraries</h4>
          <p>
@@ -48,7 +48,7 @@ available options.
          
          <h3>Usage</h3>
          <p>By executing the jar file ...
-         <pre><code>$ java -jar tDBN-0.1.2.jar</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.3.jar</code></pre>
          ... the available command-line options are shown:
          </p>
          <pre><code>usage: tDBN
@@ -64,20 +64,28 @@ available options.
                               is the longest distance between connected
                               time-slices. Default is 1, allowing edges
                               from one preceding slice.
+ -ns,--nonStationary          Learns a non-stationary network (one
+                              transition network per time transition). By
+                              default, a stationary DBN is learnt.
  -o,--outputFile &lt;file&gt;       Writes output to &lt;file&gt;. If not supplied,
                               output is written to terminal.
  -p,--numParents &lt;int&gt;        Maximum number of parents from preceding
                               time-slice(s).
+ -pm,--parameters             Learns and outputs the network parameters.
  -r,--root &lt;int&gt;              Root node of the intra-slice tree. By
                               default, root is arbitrary.
  -s,--scoringFunction &lt;arg&gt;   Scoring function to be used, either MDL or
                               LL. MDL is used by default.
+ -sp,--spanning               Forces intra-slice connectivity to be a tree
+                              instead of a forest, eventually producing a
+                              structure with a lower score.
 </code></pre>
          <h4>Input file format</h4>
          <p>
             The input file should be in comma-separated values (CSV) format.
          <ul>
             <li>The first line is the header, naming the attributes and specifying the time slice index, separared by two underscores: "attributeName__t"</li>
+            <li>The order of the attributes must be maintained: "a__1", "b__1", "a__2", "b__2".
             <li>The first column contains an identification (string or number) of each subject (this identifier does not affect the learnt network).</li>
             <li>All other lines correspond to observations of an individual over time.</li>
             <li>Missing values can be marked as "?" but should not occur, as the algorithm discards the observation (time slice) in question.</li>
@@ -94,6 +102,47 @@ available options.
          <p>
             Because the algorithm assumes a multinomial distribution, data should be already discretized to guarantee a manageable (i.e., small) number of states for each attribute, taking into account the number of observations. For example, if an attribute is observed 100 times throughout time and 50 different values are recorded, this will generally not provide enough information for learning accurate data dependences.
          </p>
+         
+<h4>Dataset preprocessing script</h3>
+
+<p>A Python script for coverting panel data to the tDBN input format can be downloaded <a href="https://github.com/josemonteiro/tDBN/raw/master/vtoh.py">here</a>. Its description and available command-line options are the following:</p>
+         
+<pre><code>usage: vtoh.py [-h] [--timeInterval TIMEINTERVAL TIMEINTERVAL]
+               [--ignoreColumns IGNORECOLUMNS [IGNORECOLUMNS ...]]
+               [--discretizeColumns DISCRETIZECOLUMNS [DISCRETIZECOLUMNS ...]]
+               [--numberBins NUMBERBINS] [--equalFrequencyBinning]
+               filename idColumn timeColumn
+
+Converts a comma-separated-values (csv) temporal data file in 'vertical
+format' (panel data format, one observation per line) to an 'horizontal
+format' (one subject per line) csv file. The data file must have a column with
+the identification of the subject, as well as a column with the identification
+of the time instant. Both of these columns are provided as arguments and must
+be integer numbers. The time interval to be considered can be specified as an
+argument. It is also possible to specify columns to be ignored and columns to
+be discretized (as well as the number of bins and the discretization method).
+
+positional arguments:
+  filename              Input CSV file.
+  idColumn              Column containing subject IDs.
+  timeColumn            Column containing time entries.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --timeInterval TIMEINTERVAL TIMEINTERVAL
+                        Time interval limits to be considered in the output.
+  --ignoreColumns IGNORECOLUMNS [IGNORECOLUMNS ...]
+                        Columns not to be included in output file.
+  --discretizeColumns DISCRETIZECOLUMNS [DISCRETIZECOLUMNS ...]
+                        Columns to be discretized.
+  --numberBins NUMBERBINS
+                        Number of bins to use when discretizing, default 10.
+  --equalFrequencyBinning
+                        If specified, discretization is done using equal
+                        frequency or quantiles discretization (default is
+                        equal width discretization).
+</code></pre>
+         
          <h4>Example #1</h4>
          <p>
             The first example considers a synthetic network structure with 5 attributes, each taking 8 states and with one parent from the preceding slice ([t] denotes the time-slice):
@@ -110,28 +159,31 @@ available options.
          As all nodes have exactly one parent from the past, the best options are to limit the number of parents with <code>-p 1</code> and use the log-likelihood (LL) score with <code>-s ll</code> to ensure that a maximum number of dependences is retrieved.</p>
          <p>The command to learn the network with the 50 observations file is
          </p>
-         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N50.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N50.csv -p 1 -s ll</code></pre>
          <p>
         and produces the following output:
          </p>
          <pre><code>Evaluating network with LL score.
 Number of networks with max score: 2
+Finding a maximum branching.
 Network score: 202.75732463763217
 
-X1_0 -> X0_1
-X2_0 -> X1_1
-X3_0 -> X2_1
-X2_0 -> X3_1
-X3_0 -> X4_1
+-----------------
 
-X0_1 -> X1_1
-X3_1 -> X2_1
-X0_1 -> X3_1
-X3_1 -> X4_1
+X1[0] -> X0[1]
+X2[0] -> X1[1]
+X3[0] -> X2[1]
+X2[0] -> X3[1]
+X3[0] -> X4[1]
+
+X0[1] -> X1[1]
+X3[1] -> X2[1]
+X0[1] -> X3[1]
+X3[1] -> X4[1]
 </code></pre>
          <p>
             Activating the <code>-d</code> switch to directly output in dot format, and redirecting into <a href="http://www.graphviz.org/">Graphviz</a>...
-         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
          <p>...produces this graph:</p>
          <p><img src="images/example1-N50.png"></p>
          <p>
@@ -139,23 +191,26 @@ X3_1 -> X4_1
          </p>
          <p>
             Using the 250 observations file as input to tDBN ...
-         <pre><code>$ java -jar tDBN-0.1.2.jar -i synth-N250.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N250.csv -p 1 -s ll</code></pre>
          ... results in the following output, which is a perfect match of the original network:
          </p>
          <pre><code>Evaluating network with LL score.
 Number of networks with max score: 1
+Finding a maximum branching.
 Network score: 829.3579534531533
 
-X0_0 -> X0_1
-X1_0 -> X1_1
-X4_0 -> X2_1
-X2_0 -> X3_1
-X3_0 -> X4_1
+-----------------
 
-X1_1 -> X0_1
-X1_1 -> X2_1
-X2_1 -> X3_1
-X2_1 -> X4_1
+X0[0] -> X0[1]
+X1[0] -> X1[1]
+X4[0] -> X2[1]
+X2[0] -> X3[1]
+X3[0] -> X4[1]
+
+X1[1] -> X0[1]
+X1[1] -> X2[1]
+X2[1] -> X3[1]
+X2[1] -> X4[1]
 </code></pre>
          <p>An improved visual representation shows the evolution of the learnt networks with the number of observations N (dashed edges are incorrect):
          </p>
@@ -174,14 +229,14 @@ X2_1 -> X4_1
          </center>
          <h4>Example #2</h4>
          <p>
-         In the second example, tDBN will be used to learn a gene regulatory network. Specifically, it will use gene expression data related to the embryonic stage of Drosophila melanogaster [<a href="#ref1">1</a>]. The dataset was preprocessed as described in [<a href="#ref2">2</a>] and can be downloaded <a href="files/drosophila-embryonic.csv">here</a>. </p>
+         In the second example, tDBN is employed to learn a gene regulatory network. Specifically, it uses gene expression data related to the embryonic stage of Drosophila melanogaster [<a href="#ref1">1</a>]. The dataset was preprocessed as described in [<a href="#ref2">2</a>] and can be downloaded <a href="files/drosophila-embryonic.csv">here</a>. </p>
          
          <p>As intra-slice dependences in regulatory networks are usually not reported, the option <code>-c</code> omits them by outputting the network in compact form, where each edge represents a dependence between a node at time slice t+1 and its parent at the previous time slice t.</p>
          
          <p>For this example, each node will have at most two parents from the previous slice, which is enforced with <code>-p 2</code>. The minimum description length (MDL) criterion further limits the number of parents by preferring simpler network structures. The <code>-s mdl</code> option is currently redundant, as tDBN uses MDL by default.</p>
          
          <p>The learning command is thus</p>
-         <pre><code>$ java -jar tDBN-0.1.2.jar -i drosophila-embryonic.csv -p 2 -d -c | \
+         <pre><code>$ java -jar tDBN-0.1.3.jar -i drosophila-embryonic.csv -p 2 -d -c | \
   dot -Tpng -o drosophila.png</code></pre>
   
         <p>and the resulting network is:</p>
@@ -189,9 +244,103 @@ X2_1 -> X4_1
 <p>Six out of the eight retrieved regulations (excluding the self-loops) are also reported in [<a href="#ref3">3</a>], indicating a potentially good result of tDBN. It should be noted, however, that data preprocessing may have not been the same, and that the number of observations is quite low, thus leading to many networks with maximum score.
             
             
+            <h4>Example #3</h4>
             
+            <p>
+            The last example shows how to output the network parameters and how to learn a non-stationary DBN. The dataset is very simple, consisting of 2 binary attributes measured in 7 individuals over 3 time-slices, and can be downloaded <a href="files/example3.csv">here</a>:
+         </p>
+         <pre><code>id,a__0,b__0,a__1,b__1,a__2,b__2
+1,0,0,0,1,1,1
+2,0,1,1,0,1,0
+3,0,1,0,0,1,0
+4,1,1,1,1,1,0
+5,1,1,0,1,1,0
+6,1,1,0,1,0,0
+7,0,0,0,0,0,0
+</code></pre>
+
+<p>To learn both the structure and the parameters of a stationary network, the following command is used:</p>
+<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters</code></pre>
+<p>resulting in</p>
+<pre><code>Evaluating network with LL score.
+Number of networks with max score: 1
+Finding a maximum branching.
+Network score: 1.4715189255145624
+
+-----------------
+
+a[0] -> a[1]
+a[0] -> b[1]
+
+b[1] -> a[1]
+
+
+a: [0.0, 1.0]
+[a[0]=1.0, b[1]=0.0]: 0.500 0.500
+[a[0]=0.0, b[1]=1.0]: 1.000 0.000
+[a[0]=1.0, b[1]=1.0]: 0.667 0.333
+[a[0]=0.0, b[1]=0.0]: 0.667 0.333
+
+b: [0.0, 1.0]
+[a[0]=0.0]: 0.750 0.250
+[a[0]=1.0]: 0.000 1.000
+</code></pre>
+
+<p>For every attribute (in this case, "a" and "b"), its conditional probability distribution table is present in the output. For a given table, the probability of each state of the corresponding attribute is specified, conditioned on the configurations of its parents (one per line).</p>
+
+<p>Proceeding to learn a non-stationary network...</p>
+<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters --nonStationary</code></pre>
+<p>... the output is:</p>
+<pre><code>Evaluating network with LL score.
+Number of networks with max score: 1
+Number of networks with max score: 2
+Finding a maximum branching.
+Network score: 0.3397980735907944
+Network score: 0.5924696128065006
+
+-----------------
+
+b[0] -> a[1]
+a[0] -> b[1]
+
+a[1] -> b[1]
+
+
+a: [0.0, 1.0]
+[b[0]=1.0]: 0.600 0.400
+[b[0]=0.0]: 1.000 0.000
+
+b: [0.0, 1.0]
+[a[0]=1.0, a[1]=0.0]: 0.000 1.000
+[a[0]=1.0, a[1]=1.0]: 0.000 1.000
+[a[0]=0.0, a[1]=1.0]: 1.000 0.000
+[a[0]=0.0, a[1]=0.0]: 0.667 0.333
+
+-----------------
+
+a[1] -> a[2]
+b[1] -> b[2]
+
+b[2] -> a[2]
+
+
+a: [0.0, 1.0]
+[a[0]=1.0, b[1]=0.0]: 0.000 1.000
+[a[0]=0.0, b[1]=1.0]: 0.000 1.000
+[a[0]=1.0, b[1]=1.0]: 0.500 0.500
+[a[0]=0.0, b[1]=0.0]: 0.500 0.500
+
+b: [0.0, 1.0]
+[b[0]=1.0]: 0.750 0.250
+[b[0]=0.0]: 1.000 0.000
+</code></pre>
+<p>Or, outputting to Graphviz...</p>
+<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters \
+--nonStationary | dot -Tpng -o example3.png</code></pre>
+<p>... this graph is produced:</p>
+<p><img src="images/example3.png"></p>
             
-            <!--Advanced usage: tDBN-0.1.2.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
+            <!--Advanced usage: tDBN-0.1.3.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
             
          <h3><a name="algorithm"></a>The tDBN learning algorithm</h3>
          <p>
@@ -207,11 +356,13 @@ X2_1 -> X4_1
             <li><a name="ref2"></a>Zhao, Wentao, Erchin Serpedin, and Edward R. Dougherty. "Inferring gene regulatory networks from time series data using the minimum description length principle." Bioinformatics 22.17 (2006): 2129-2135.</li>
             <li><a name="ref3"></a>Dondelinger, Frank, Sophie Lèbre, and Dirk Husmeier. "Non-homogeneous dynamic Bayesian networks with Bayesian regularization for inferring gene regulatory networks with gradually time-varying structure." Machine learning 90.2 (2013): 191-230.</li>
          </ol>
+         
       </section>
       <footer>
          <p>This project is maintained by <a href="https://github.com/josemonteiro">josemonteiro</a></p>
          <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
       </footer>
+      </div>
    </body>
 </html>
 
