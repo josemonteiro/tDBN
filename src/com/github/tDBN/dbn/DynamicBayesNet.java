@@ -2,6 +2,7 @@ package com.github.tDBN.dbn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import com.github.tDBN.utils.Edge;
@@ -180,26 +181,33 @@ public class DynamicBayesNet {
 
 		// transition and intra-slice (t>0) edges
 		for (int t = 0; t < T; t++)
-			sb.append(transitionNets.get(t).toString(t, compactFormat));
+			sb.append(transitionNets.get(t).toDot(t, compactFormat));
 
 		sb.append(ls + "}" + ls);
 
 		return sb.toString();
 	}
 
-	public String toString() {
+	public String toString(boolean printParameters) {
 		StringBuilder sb = new StringBuilder();
+		String ls = System.getProperty("line.separator");
 
 		if (initialNet != null)
 			sb.append(initialNet.toString(-1, false));
 
 		int i = 0;
-		for (BayesNet transitionNet : transitionNets) {
-			sb.append(transitionNet.toString(i, false));
+		for (Iterator<BayesNet> iter = transitionNets.iterator(); iter.hasNext();) {
+			sb.append(iter.next().toString(i, printParameters));
 			i++;
+			if (iter.hasNext())
+				sb.append("-----------------" + ls + ls);
 		}
 
 		return sb.toString();
+	}
+
+	public String toString() {
+		return toString(false);
 	}
 
 	@SuppressWarnings("unused")

@@ -1,11 +1,15 @@
 package com.github.tDBN.dbn;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import com.github.tDBN.utils.Edge;
@@ -376,7 +380,7 @@ public class BayesNet {
 		return markovLag;
 	}
 
-	public String toString(int t, boolean compactFormat) {
+	public String toDot(int t, boolean compactFormat) {
 
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
@@ -396,6 +400,59 @@ public class BayesNet {
 				for (int head = 0; head < n; head++)
 					for (Integer tail : parentNodesOneSlice.get(head))
 						sb.append("X" + tail + "_" + slice + " -> " + "X" + head + "_" + presentSlice + ls);
+				sb.append(ls);
+			}
+		}
+
+		return sb.toString();
+	}
+
+	public String toString(int t, boolean printParameters) {
+
+		StringBuilder sb = new StringBuilder();
+		String ls = System.getProperty("line.separator");
+
+		DecimalFormat df = new DecimalFormat("0.000");
+		DecimalFormatSymbols dfs = df.getDecimalFormatSymbols();
+		dfs.setDecimalSeparator('.');
+		df.setDecimalFormatSymbols(dfs);
+
+		int n = attributes.size();
+		int presentSlice = t + markovLag;
+
+		for (int ts = 0; ts < markovLag + 1; ts++) {
+			List<List<Integer>> parentNodesOneSlice = parentNodesPerSlice.get(ts);
+			int slice = t + ts;
+			for (int head = 0; head < n; head++)
+				for (Integer tail : parentNodesOneSlice.get(head))
+					sb.append(attributes.get(tail).getName() + "[" + slice + "] -> " + attributes.get(head).getName()
+							+ "[" + presentSlice + "]" + ls);
+			sb.append(ls);
+		}
+
+		if (printParameters) {
+			sb.append(ls);
+
+			for (int i = 0; i < n; i++) {
+				sb.append(attributes.get(i).getName() + ": " + attributes.get(i) + ls);
+				Map<Configuration, List<Double>> cpt = parameters.get(i);
+				Iterator<Entry<Configuration, List<Double>>> iter = cpt.entrySet().iterator();
+				while (iter.hasNext()) {
+					Entry<Configuration, List<Double>> e = iter.next();
+					sb.append(e.getKey().toString());
+
+					sb.append(": ");
+
+					List<Double> probabilities = e.getValue();
+					double sum = 1;
+					for (double p : probabilities) {
+						sb.append(df.format(p) + " ");
+						sum -= p;
+					}
+					sb.append(sum < 0 ? df.format(0) : df.format(sum));
+
+					sb.append(ls);
+				}
 				sb.append(ls);
 			}
 		}

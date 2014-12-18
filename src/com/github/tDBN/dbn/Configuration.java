@@ -9,12 +9,16 @@ public class Configuration {
 
 	protected int[] configuration;
 
-	/* markovLag = configuration.lenght/n -1 */
+	protected int childNode;
+
+	/* markovLag = configuration.length/n -1 */
 	protected int markovLag;
 
 	public Configuration(Configuration c) {
 		this.attributes = c.attributes;
 		this.configuration = c.configuration.clone();
+		this.markovLag = configuration.length / attributes.size() - 1;
+		this.childNode = c.childNode;
 	}
 
 	protected Configuration(List<Attribute> attributes, int markovLag) {
@@ -43,7 +47,7 @@ public class Configuration {
 		sb.append("[");
 		int n = attributes.size();
 		for (int i = 0; i < configuration.length; i++) {
-			if (configuration[i] != -1) {
+			if (configuration[i] != -1 && i != n * markovLag + childNode) {
 				int lag = i / n;
 				int id = i % n;
 				sb.append(attributes.get(id).getName() + "[" + lag + "]=" + attributes.get(id).get(configuration[i]));

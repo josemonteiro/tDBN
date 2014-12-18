@@ -8,8 +8,6 @@ public class LocalConfiguration extends Configuration {
 
 	private int[] parentIndices;
 
-	private int childNode;
-
 	/**
 	 * If true, considers the child value when matching an observation with the
 	 * current configuration. In this case, N_{ijk} is what is being counted.
