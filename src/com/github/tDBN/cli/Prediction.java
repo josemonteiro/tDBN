@@ -49,18 +49,19 @@ public class Prediction {
 				.withLongOpt("markovLag").create("m");
 
 		Option numFolds = OptionBuilder.withArgName("int").hasArg()
-				.withDescription("Number of fold for cross-validation.").withLongOpt("numFolds").create("k");
+				.withDescription("Number of folds for cross-validation (default 10).").withLongOpt("numFolds")
+				.create("k");
 
 		Option forecastAttributes = OptionBuilder.withArgName("int,...").hasArgs().isRequired()
-				.withDescription("Class attribute used for stratifying data.").withLongOpt("classAttribute")
-				.create("f");
+				.withDescription("Attributes that are forecast for the following time-slice.")
+				.withLongOpt("forecastAttributes").create("f");
 
 		Option classAttribute = OptionBuilder.withArgName("int").hasArg()
-				.withDescription("Attributes that are forecast for the following time-slice.")
-				.withLongOpt("forecastAttributes").create("c");
+				.withDescription("Class attribute used for stratifying data.").withLongOpt("classAttribute")
+				.create("c");
 
 		Option scoringFunction = OptionBuilder.hasArg()
-				.withDescription("Scoring function to be used, either MDL or LL. LL is used by default.")
+				.withDescription("Scoring function to be used, either MDL or LL (default LL).")
 				.withLongOpt("scoringFunction").create("s");
 
 		options.addOption(observationsFile);
