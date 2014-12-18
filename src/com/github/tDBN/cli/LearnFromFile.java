@@ -63,6 +63,19 @@ public class LearnFromFile {
 						"Maximum Markov lag to be considered, which is the longest distance between connected time-slices. Default is 1, allowing edges from one preceding slice.")
 				.withLongOpt("markovLag").create("m");
 
+		Option spanningTree = OptionBuilder
+				.withDescription(
+						"Forces intra-slice connectivity to be a tree instead of a forest, eventually producing a structure with a lower score.")
+				.withLongOpt("spanning").create("sp");
+
+		Option nonStationary = OptionBuilder
+				.withDescription(
+						"Learns a non-stationary network (one transition network per time transition). By default, a stationary DBN is learnt.")
+				.withLongOpt("nonStationary").create("ns");
+
+		Option parameters = OptionBuilder.withDescription("Learns and outputs the network parameters.")
+				.withLongOpt("parameters").create("pm");
+
 		options.addOption(inputFile);
 		options.addOption(numParents);
 		options.addOption(outputFile);
@@ -71,6 +84,9 @@ public class LearnFromFile {
 		options.addOption(dotFormat);
 		options.addOption(compact);
 		options.addOption(maxMarkovLag);
+		options.addOption(spanningTree);
+		options.addOption(nonStationary);
+		options.addOption(parameters);
 
 		CommandLineParser parser = new GnuParser();
 		try {
@@ -78,13 +94,17 @@ public class LearnFromFile {
 			CommandLine cmd = parser.parse(options, args);
 
 			boolean verbose = !cmd.hasOption("d");
+			boolean stationary = !cmd.hasOption("nonStationary");
+			boolean spanning = cmd.hasOption("spanning");
+			boolean printParameters = cmd.hasOption("parameters");
 
-			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
 			// TODO: check sanity
+			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
+			int root = Integer.parseInt(cmd.getOptionValue("r", "-1"));
 
 			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
 
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), true, verbose);
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
@@ -100,15 +120,19 @@ public class LearnFromFile {
 
 			DynamicBayesNet dbn;
 
-			if (cmd.hasOption("r")) {
-				int r = Integer.parseInt(cmd.getOptionValue("r"));
-				if (verbose)
-					System.out.println("Root node specified: " + r);
-				dbn = s.toDBN(r);
-			} else {
-				// System.out.println("No root specified.");
-				dbn = s.toDBN();
+			if (verbose) {
+				if (cmd.hasOption("r"))
+					System.out.println("Root node specified: " + root);
+				if (spanning)
+					System.out.println("Finding a maximum spanning tree.");
+				else
+					System.out.println("Finding a maximum branching.");
 			}
+
+			dbn = s.toDBN(root, spanning);
+
+			if (printParameters)
+				dbn.learnParameters(o);
 
 			String output;
 			if (cmd.hasOption("d")) {
@@ -117,7 +141,7 @@ public class LearnFromFile {
 				else
 					output = dbn.toDot(false);
 			} else
-				output = dbn.toString();
+				output = dbn.toString(printParameters);
 
 			if (cmd.hasOption("o")) {
 				try {
@@ -126,7 +150,11 @@ public class LearnFromFile {
 					e.printStackTrace();
 				}
 			} else {
-				System.out.println();
+				if (verbose) {
+					System.out.println();
+					System.out.println("-----------------");
+					System.out.println();
+				}
 				System.out.println(output);
 			}
 
