@@ -126,6 +126,8 @@ public class Scores {
 				for (List<Integer> parentSet : parentSets) {
 					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i) : sf.evaluate(
 							observations, t, parentSet, i);
+					// System.out.println("Xi:" + i + " ps:" + parentSet +
+					// " score:" + score);
 					if (bestScore < score) {
 						bestScore = score;
 						parentNodesPast.get(t).set(i, parentSet);
@@ -148,6 +150,8 @@ public class Scores {
 						for (List<Integer> parentSet : parentSets) {
 							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i) : sf
 									.evaluate(observations, t, parentSet, j, i);
+							// System.out.println("Xi:" + i + " Xj:" + j +
+							// " ps:" + parentSet + " score:" + score);
 							if (bestScore < score) {
 								bestScore = score;
 								parentNodes.get(t).get(i).set(j, parentSet);
@@ -161,22 +165,23 @@ public class Scores {
 					}
 				}
 			}
+
+			if (verbose) {
+				// System.out.println(Arrays.toString(numBestScoresPast));
+				// System.out.println(Arrays.deepToString(numBestScores));
+				long numSolutions = 1;
+				for (int i = 0; i < n; i++)
+					numSolutions *= numBestScoresPast[i];
+				for (int i = 0; i < n; i++)
+					for (int j = 0; j < n; j++)
+						if (i != j)
+							numSolutions *= numBestScores[i][j];
+				System.out.println("Number of networks with max score: " + numSolutions);
+			}
+
 		}
 
 		evaluated = true;
-
-		if (verbose) {
-			// System.out.println(Arrays.toString(numBestScoresPast));
-			// System.out.println(Arrays.deepToString(numBestScores));
-			long numSolutions = 1;
-			for (int i = 0; i < n; i++)
-				numSolutions *= numBestScoresPast[i];
-			for (int i = 0; i < n; i++)
-				for (int j = 0; j < n; j++)
-					if (i != j)
-						numSolutions *= numBestScores[i][j];
-			System.out.println("Number of networks with max score: " + numSolutions);
-		}
 
 		return this;
 
@@ -226,10 +231,10 @@ public class Scores {
 	}
 
 	public DynamicBayesNet toDBN() {
-		return toDBN(-1);
+		return toDBN(-1, false);
 	}
 
-	public DynamicBayesNet toDBN(int root) {
+	public DynamicBayesNet toDBN(int root, boolean spanning) {
 
 		if (!evaluated)
 			throw new IllegalStateException("Scores must be evaluated before being converted to DBN");
@@ -242,7 +247,7 @@ public class Scores {
 
 		for (int t = 0; t < numTransitions; t++) {
 
-			List<Edge> intraRelations = OptimumBranching.evaluate(scoresMatrix[t], root);
+			List<Edge> intraRelations = OptimumBranching.evaluate(scoresMatrix[t], root, spanning);
 
 			if (verbose) {
 				double score = 0;
