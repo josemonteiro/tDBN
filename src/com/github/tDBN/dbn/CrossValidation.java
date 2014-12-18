@@ -116,6 +116,7 @@ public class CrossValidation {
 				i++;
 			}
 
+		// stratify data
 		if (classAttribute != null) {
 
 			int classRange = o.getAttributes().get(classAttribute).size();
@@ -191,10 +192,10 @@ public class CrossValidation {
 		String params = dbn1.learnParameters(train, true);
 
 		if (dotOutput) {
-			for (Attribute a : train.getAttributes()) {
-				System.out.print(a.getName() + ": ");
-				System.out.println(a);
-			}
+			// for (Attribute a : train.getAttributes()) {
+			// System.out.print(a.getName() + ": ");
+			// System.out.println(a);
+			// }
 
 			// System.out.println(params);
 			return null;
@@ -207,7 +208,7 @@ public class CrossValidation {
 
 	}
 
-	public String evaluate(int numParents, ScoringFunction s, String outputFileName, List<Integer> predictorAttributes,
+	public String evaluate(int numParents, ScoringFunction s, String outputFileName, List<Integer> forecastAttributes,
 			boolean mostProbable) {
 
 		int n = o.numAttributes();
@@ -224,7 +225,7 @@ public class CrossValidation {
 		String ls = System.getProperty("line.separator");
 
 		output.append(randomSeed + ls);
-		for (int predictor : predictorAttributes)
+		for (int predictor : forecastAttributes)
 			output.append(o.getAttributes().get(predictor).getName() + "\t");
 		output.append("\t" + "actual_value" + ls);
 
@@ -267,7 +268,7 @@ public class CrossValidation {
 			// output.append("---Fold-" + fold + "---" + ls);
 			for (i = 0; i < testSize; i++) {
 				int[][][] fMatrix = forecast.getObservationsMatrix();
-				for (int predictor : predictorAttributes)
+				for (int predictor : forecastAttributes)
 					output.append(o.getAttributes().get(predictor).get(fMatrix[0][i][m * n + predictor]) + "\t");
 
 				output.append("\t");
@@ -282,14 +283,13 @@ public class CrossValidation {
 		// use all data for training and produce network graph
 
 		System.out.println("---All-data---");
-
 		Observations train = o;
 		evaluateFold(train, null, numParents, s, true, outputFileName, mostProbable);
-
 		output.append(ls);
-		// only care about true values for baseline classifier
+
+		// output true values for baseline classifier
 		for (int i = 0; i < allData.length; i++) {
-			for (int j = 0; j < (m + 1) * nPassive; j++)
+			for (int j = 0; j < allPassiveData[0].length; j++)
 				output.append(allPassiveData[i][j] + "\t");
 			output.append(ls);
 		}
@@ -305,13 +305,13 @@ public class CrossValidation {
 		ScoringFunction s = new MDLScoringFunction();
 		int folds = 0;
 		Integer classAttribute = null;
-		List<Integer> predictedAttributes = Arrays.asList(1, 2, 4, 5);
+		List<Integer> forecastAttributes = Arrays.asList(1, 2, 4, 5);
 
 		Observations o = new Observations("trial5-horizontal.csv", "das-horizontal.csv", m);
 
 		CrossValidation cv = new CrossValidation(o, folds, classAttribute);
 
-		System.out.println(cv.evaluate(p, s, "dot", predictedAttributes, true));
+		System.out.println(cv.evaluate(p, s, "dot", forecastAttributes, true));
 
 	}
 
