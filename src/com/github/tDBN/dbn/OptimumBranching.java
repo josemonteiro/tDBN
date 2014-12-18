@@ -17,10 +17,10 @@ import com.github.tDBN.utils.TreeNode;
 public class OptimumBranching {
 
 	public static List<Edge> evaluate(double[][] scoresMatrix) {
-		return evaluate(scoresMatrix, -1);
+		return evaluate(scoresMatrix, -1, false);
 	}
 
-	public static List<Edge> evaluate(double[][] scoresMatrix, int finalRoot) {
+	public static List<Edge> evaluate(double[][] scoresMatrix, int finalRoot, boolean spanning) {
 
 		// INIT phase
 
@@ -106,7 +106,7 @@ public class OptimumBranching {
 						maxIndex = i;
 				// edge is deleted from I[r]
 				Edge heaviest = inEdges.remove(maxIndex);
-				if (heaviest.getWeight() <= 0) {
+				if (!spanning && heaviest.getWeight() <= 0) {
 					roots.add(min[r]);
 				} else {
 
@@ -275,13 +275,18 @@ public class OptimumBranching {
 
 	public static void main(String[] args) {
 
-		double matrix[][] = { { 0, 0, 100, 0, 0 }, { 0, 0, 0, 0, 99 }, { 0, 0, 0, 0, 34 }, { 0, 42, 0, 0, 0 },
-				{ 0, 0, 82, 87, 0 } };
+		double matrix[][] = { { 0, -20, -100, -30, -40 }, { -10, 0, -20, -30, 99 }, { -10, -20, 0, -30, 34 },
+				{ -10, 42, -20, 0, -30 }, { -10, -20, 82, 87, 0 } };
 
 		List<Edge> branchingEdges = OptimumBranching.evaluate(matrix);
 
+		int weight = 0;
+
 		for (Edge e : branchingEdges) {
 			System.out.println(e);
+			weight += e.getWeight();
 		}
+
+		System.out.println(weight);
 	}
 }
