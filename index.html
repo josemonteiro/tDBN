@@ -350,6 +350,157 @@ b: [0.0, 1.0]
             The following figure illustrates the structure of a tree-augmented network, with 5 attributes and one parent from the previous time-slice:</p>
             <p><img src="images/tree-augmented.png"></p>
 
+
+<h3>Assessment on time complexity</h3>
+        <p>
+        The tDBN learning algorithm has a theoretical time complexity of O(n<sup>p+3</sup> r<sup>p+2</sup> N), where n is the number of network attributes, p is the number of parents from the preceding time-slice, r is the number of states of all attributes and N is the number of observations.</p>
+        <p>This section presents the results of a set of simulations to assess the algorithm's running time versus its theoretical complexity.  The methodology consisted in 1) generating random tree-augmented networks, 2) sampling each of those networks to generate observations, and 3) inputting the observations to the tDBN algorithm to recover the underlying structure. The time taken by the third step of this process &mdash; the algorithm's running time &mdash; was recorded. Furthermore, the original and recovered networks were compared by evaluating the precision metric.</p>
+        
+        <p>Each of the following subsections studies the effect of varying one of the parameters (n, p, r or N), keeping all the others constant. The default values of the parameters are:</p>
+        <table>
+        <tr><td>n</td><td>10</td></td></tr>
+        <tr><td>p</td><td>2</td></td></tr>
+        <tr><td>r</td><td>5</td></td></tr>
+        <tr><td>N</td><td>100</td></td></tr>
+        </table>
+        <p>The results are displayed as average statistics over 10 runs, also indicating the standard deviation. All simulations were run on Intel i5-3570 @ 3.40 GHz machines.</p>
+
+
+        <h4>Number of attributes n</h4>
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
+        <tr><td>n</td><td>Time (seconds) </td><td>Precision (%)</td></tr>
+        <tr><td>
+5</td><td>0&plusmn;0</td><td>60&plusmn;16</td></tr>
+<tr><td>
+8</td><td>2&plusmn;0</td><td>38&plusmn;11</td></tr>
+<tr><td>
+11</td><td>10&plusmn;0</td><td>27&plusmn;7</td></tr>
+<tr><td>
+14</td><td>31&plusmn;0</td><td>17&plusmn;6</td></tr>
+<tr><td>
+17</td><td>81&plusmn;1</td><td>14&plusmn;5</td></tr>
+<tr><td>
+20</td><td>175&plusmn;1</td><td>14&plusmn;4</td></tr>
+<tr><td>
+23</td><td>326&plusmn;2</td><td>8&plusmn;4</td></tr>
+<tr><td>
+26</td><td>581&plusmn;2</td><td>9&plusmn;4</td></tr>
+<tr><td>
+29</td><td>976&plusmn;4</td><td>9&plusmn;6</td></tr>
+<tr><td>
+32</td><td>1555&plusmn;3</td><td>5&plusmn;2</td></tr>
+<tr><td>
+35</td><td>2389&plusmn;9</td><td>8&plusmn;2</td></tr>
+        </table></p>
+        
+        <p><img src="images/n-variation.png"></p>
+                <p>The adjustment of a 4-degree polynomial curve to the obtained data (Time vs. n) yields an almost perfect fit, with R&sup2; > 0.9999. This result is in line with the theoretical complexity of O(n<sup>5</sup>), assuming other parameters constant. As n tends to larger values, only a 5-degree polynomial curve is expected to perfectly fit the data.</p>
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/></colgroup>
+        <tr><td>Degree of the fitting polynomial</td><td>R&sup2;</td></tr>
+        <tr><td>1</td><td>0.699</td></td></tr>
+        <tr><td>2</td><td>0.9636</td></td></tr>
+        <tr><td>3</td><td>0.9985</td></td></tr>
+        <tr><td>4</td><td>0.99998</td></td></tr>
+        <tr><td>5</td><td>0.999997</td></td></tr>
+        </table>
+
+        
+        <h4>Number of parents p</h4>
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
+        <tr><td>p</td><td>Time (seconds) </td><td>Precision (%)</td></tr>
+        <tr><td>
+1</td><td>0&plusmn;0</td><td>69&plusmn;12</td></tr>
+<tr><td>
+2</td><td>7&plusmn;0</td><td>25&plusmn;8</td></tr>
+<tr><td>
+3</td><td>79&plusmn;1</td><td>26&plusmn;7</td></tr>
+<tr><td>
+4</td><td>671&plusmn;18</td><td>36&plusmn;5</td></tr>
+<tr><td>
+5</td><td>4395*</td><td>44*</td></tr>
+        </table>
+        <small>* Due to large running time, simulation for p=5 was only run once</small></p>
+        
+        <p><img src="images/p-variation.png">&nbsp;<img src="images/p-variation-log.png"></p>
+        
+        <table><tr><td>Exponential fit</td><td>R&sup2; = 0.993</td></tr></table>
+            
+            <p>The adjustment of an exponential curve to the obtained data (Time vs. p) yields an good fit, with R&sup2; > 0.99. It can be observed in the semi-log graph that the real curve is not a straight line, but has a slight inclination downwards. This suggests that the real complexity is sub-exponential, nevertheless being bounded by O(2<sup>p</sup>), assuming other parameters constant.</p>
+        
+        <h4>Size of attributes r</h4>
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
+        <tr><td>p</td><td>Time (seconds) </td><td>Precision (%)</td></tr>
+        <tr><td>
+2</td><td>0&plusmn;0</td><td>55&plusmn;12</td></tr>
+<tr><td>
+4</td><td>3&plusmn;0</td><td>37&plusmn;12</td></tr>
+<tr><td>
+6</td><td>12&plusmn;0</td><td>22&plusmn;9</td></tr>
+<tr><td>
+8</td><td>33&plusmn;1</td><td>20&plusmn;7</td></tr>
+<tr><td>
+10</td><td>74&plusmn;1</td><td>22&plusmn;9</td></tr>
+<tr><td>
+12</td><td>147&plusmn;2</td><td>13&plusmn;7</td></tr>
+<tr><td>
+14</td><td>259&plusmn;4</td><td>13&plusmn;4</td></tr>
+<tr><td>
+16</td><td>428&plusmn;3</td><td>17&plusmn;6</td></tr>
+<tr><td>
+18</td><td>676&plusmn;5</td><td>17&plusmn;5</td></tr>
+<tr><td>
+20</td><td>1003&plusmn;7</td><td>18&plusmn;8</td></tr>
+        </table></p>
+        
+        <p><img src="images/r-variation.png"></p>
+        <p>The adjustment of a 3-degree polynomial curve to the obtained data (Time vs. r) yields an almost perfect fit, with R&sup2; > 0.9999. This result is in line with the theoretical complexity of O(r<sup>4</sup>), assuming other parameters constant. As n tends to larger values, only a 4-degree polynomial curve is expected to perfectly fit the data.</p>
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/></colgroup>
+        <tr><td>Degree of the fitting polynomial</td><td>R&sup2;</td></tr>
+        <tr><td>1</td><td>0.794</td></td></tr>
+        <tr><td>2</td><td>0.9882</td></td></tr>
+        <tr><td>3</td><td>0.99991</td></td></tr>
+        <tr><td>4</td><td>0.99998</td></td></tr>
+        </table>
+        
+        <h4>Number of observations N</h4>
+
+        <p><table>
+        <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
+        <tr><td>N</td><td>Time (seconds) </td><td>Precision (%)</td></tr>
+        <tr><td>
+100</td><td>6&plusmn;0</td><td>32&plusmn;6</td></tr>
+<tr><td>
+200</td><td>13&plusmn;0</td><td>54&plusmn;16</td></tr>
+<tr><td>
+300</td><td>20&plusmn;1</td><td>85&plusmn;15</td></tr>
+<tr><td>
+400</td><td>27&plusmn;1</td><td>97&plusmn;4</td></tr>
+<tr><td>
+500</td><td>38&plusmn;1</td><td>99&plusmn;1</td></tr>
+<tr><td>
+600</td><td>47&plusmn;1</td><td>100&plusmn;1</td></tr>
+<tr><td>
+700</td><td>52&plusmn;2</td><td>99&plusmn;3</td></tr>
+<tr><td>
+800</td><td>59&plusmn;2</td><td>100&plusmn;1</td></tr>
+<tr><td>
+900</td><td>70&plusmn;2</td><td>100&plusmn;0</td></tr>
+<tr><td>
+1000</td><td>77&plusmn;2</td><td>99&plusmn;2</td></tr>
+        </table></p>
+        
+                <p><img src="images/N-variation.png"></p>
+                
+                <p>The adjustment of a linear curve to the obtained data (Time vs. N) yields a good fit, with R&sup2; > 0.99. This result is in line with the theoretical complexity of O(N), assuming other parameters constant.</p>
+                
+            <table><tr><td>Linear fit</td><td>R&sup2; = 0.9971</td></tr></table>
+
+
          <h3>References</h3>
          <ol>
             <li><a name="ref1"></a>Arbeitman, Michelle N., et al. "Gene expression during the life cycle of Drosophila melanogaster." Science 297.5590 (2002): 2270-2275.</li>
