@@ -69,6 +69,18 @@ public class Utils {
 		return res;
 	}
 
+	public static boolean[][] adjacencyMatrix(List<Edge> edges, int n) {
+
+		// adj[i][j] = true <=> Xj -> Xi
+		boolean[][] adj = new boolean[n][n];
+
+		for (Edge e : edges)
+			adj[e.getHead()] = adj[e.getTail()];
+
+		return adj;
+
+	}
+
 	public static void main(String[] args) throws IOException {
 
 		int n = 8;

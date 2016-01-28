@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.github.tDBN.utils.Edge;
+import com.github.tDBN.utils.Utils;
 
 public class Scores {
 
@@ -142,9 +143,6 @@ public class Scores {
 
 			for (int i = 0; i < n; i++) {
 				for (int j = 0; j < n; j++) {
-					// int currentEdge = i * n + j;
-					// System.out.println("evaluating edge " + currentEdge + "/"
-					// + n * n);
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
 						for (List<Integer> parentSet : parentSets) {
@@ -251,8 +249,21 @@ public class Scores {
 
 			if (verbose) {
 				double score = 0;
-				for (Edge e : intraRelations)
-					score += e.getWeight();
+				boolean[][] adj = Utils.adjacencyMatrix(intraRelations, n);
+
+				for (int i = 0; i < n; i++) {
+					boolean isRoot = true;
+					for (int j = 0; j < n; j++) {
+						if (adj[i][j]) {
+							// score
+							score += (scoresMatrix[t][i][j] - scoresMatrix[t][i][i]);
+							isRoot = false;
+						}
+					}
+					if (isRoot)
+						// subtract since sign was inverted
+						score -= scoresMatrix[t][i][i];
+				}
 
 				System.out.println("Network score: " + score);
 			}
