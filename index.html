@@ -56,7 +56,7 @@ available options.
 
          <h3>Usage</h3>
          <p>By executing the jar file ...
-         <pre><code>$ java -jar tDBN-0.1.3.jar</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.4.jar</code></pre>
          ... the available command-line options are shown:
          </p>
          <pre><code>usage: tDBN
@@ -167,7 +167,7 @@ optional arguments:
          As all nodes have exactly one parent from the past, the best options are to limit the number of parents with <code>-p 1</code> and use the log-likelihood (LL) score with <code>-s ll</code> to ensure that a maximum number of dependences is retrieved.</p>
          <p>The command to learn the network with the 50 observations file is
          </p>
-         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N50.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.4.jar -i synth-N50.csv -p 1 -s ll</code></pre>
          <p>
         and produces the following output:
          </p>
@@ -191,7 +191,7 @@ X3[1] -> X4[1]
 </code></pre>
          <p>
             Activating the <code>-d</code> switch to directly output in dot format, and redirecting into <a href="http://www.graphviz.org/">Graphviz</a>...
-         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.4.jar -i synth-N50.csv -p 1 -s ll -d | dot -Tpng -o N50.png</code></pre>
          <p>...produces this graph:</p>
          <p><img src="images/example1-N50.png"></p>
          <p>
@@ -199,7 +199,7 @@ X3[1] -> X4[1]
          </p>
          <p>
             Using the 250 observations file as input to tDBN ...
-         <pre><code>$ java -jar tDBN-0.1.3.jar -i synth-N250.csv -p 1 -s ll</code></pre>
+         <pre><code>$ java -jar tDBN-0.1.4.jar -i synth-N250.csv -p 1 -s ll</code></pre>
          ... results in the following output, which is a perfect match of the original network:
          </p>
          <pre><code>Evaluating network with LL score.
@@ -244,7 +244,7 @@ X2[1] -> X4[1]
          <p>For this example, each node will have at most two parents from the previous slice, which is enforced with <code>-p 2</code>. The minimum description length (MDL) criterion further limits the number of parents by preferring simpler network structures. The <code>-s mdl</code> option is currently redundant, as tDBN uses MDL by default.</p>
 
          <p>The learning command is thus</p>
-         <pre><code>$ java -jar tDBN-0.1.3.jar -i drosophila-embryonic.csv -p 2 -d -c | \
+         <pre><code>$ java -jar tDBN-0.1.4.jar -i drosophila-embryonic.csv -p 2 -d -c | \
   dot -Tpng -o drosophila.png</code></pre>
 
         <p>and the resulting network is:</p>
@@ -268,7 +268,7 @@ X2[1] -> X4[1]
 </code></pre>
 
 <p>To learn both the structure and the parameters of a stationary network, the following command is used:</p>
-<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters</code></pre>
+<pre><code>$ java -jar tDBN-0.1.4.jar -i example3.csv -p 1 -s ll --parameters</code></pre>
 <p>resulting in</p>
 <pre><code>Evaluating network with LL score.
 Number of networks with max score: 1
@@ -297,7 +297,7 @@ b: [0.0, 1.0]
 <p>For every attribute (in this case, "a" and "b"), its conditional probability distribution table is present in the output. For a given table, the probability of each state of the corresponding attribute is specified, conditioned on the configurations of its parents (one per line).</p>
 
 <p>Proceeding to learn a non-stationary network...</p>
-<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters --nonStationary</code></pre>
+<pre><code>$ java -jar tDBN-0.1.4.jar -i example3.csv -p 1 -s ll --parameters --nonStationary</code></pre>
 <p>... the output is:</p>
 <pre><code>Evaluating network with LL score.
 Number of networks with max score: 1
@@ -343,12 +343,12 @@ b: [0.0, 1.0]
 [b[0]=0.0]: 1.000 0.000
 </code></pre>
 <p>Or, outputting to Graphviz...</p>
-<pre><code>$ java -jar tDBN-0.1.3.jar -i example3.csv -p 1 -s ll --parameters \
+<pre><code>$ java -jar tDBN-0.1.4.jar -i example3.csv -p 1 -s ll --parameters \
 --nonStationary | dot -Tpng -o example3.png</code></pre>
 <p>... this graph is produced:</p>
 <p><img src="images/example3.png"></p>
 
-            <!--Advanced usage: tDBN-0.1.3.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
+            <!--Advanced usage: tDBN-0.1.4.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
 
          <h3><a name="algorithm"></a>The tDBN learning algorithm</h3>
          <p>
