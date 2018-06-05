@@ -23,7 +23,7 @@
          <p>Released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></p>
          <p class="view"><a href="https://github.com/josemonteiro/tDBN">View the Project on GitHub <small>tDBN/tDBN</small></a></p>
          <ul>
-            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.3/tDBN-0.1.3.jar">Download release <strong>tDBN-0.1.3</strong></a></li>
+            <li><a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.4/tDBN-0.1.4.jar">Download release <strong>tDBN-0.1.4</strong></a></li>
             <li><a href="https://github.com/josemonteiro/tDBN/zipball/master">Download current <strong>sources</strong></a></li>
          </ul>
       </header>
@@ -32,20 +32,28 @@
          <p>
             tDBN is Java implementation of a dynamic Bayesian network (DBN) structure learning algorithm with the same name (for details about the algorithm, please <a href="#algorithm">scroll down</a>). It can learn a network structure from a file with multivariate longitudinal observations, and has polynomial time complexity in the number of attributes and observations.
          </p>
+         <p>
+           If you use tDBN in your research, please cite:
+         </p>
+        <p>
+           José L Monteiro, Susana Vinga, and Alexandra M Carvalho.<br/>
+           Polynomial-time algorithm for learning optimal tree-augmented dynamic Bayesian networks.<br/>
+           In UAI, pages 622–631, 2015. <a href="http://auai.org/uai2015/proceedings/papers/329.pdf">http://auai.org/uai2015/proceedings/papers/329.pdf</a>
+        </p>
          <h4>Current release</h4>
          <p>
-            The program's current release (2014.12.19) is tDBN-0.1.3, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.3/tDBN-0.1.3.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
+            The program's current release is tDBN-0.1.4, and can be downloaded <a href="https://github.com/josemonteiro/tDBN/releases/download/0.1.4/tDBN-0.1.4.jar">here</a>. It comes packaged as an executable JAR file, already including the required external libraries.
          </p>
          <h4>Libraries</h4>
          <p>
             tDBN depends on two external libraries, both released under the Apache License 2.0:
 <ul><li><a href="http://opencsv.sourceforge.net/">opencsv</a> for parsing CSV files;
-<li><a href="http://commons.apache.org/proper/commons-cli/">Apache Commons CLI</a> for parsing command line 
-options passed to the program, and also printing help messages detailing the 
+<li><a href="http://commons.apache.org/proper/commons-cli/">Apache Commons CLI</a> for parsing command line
+options passed to the program, and also printing help messages detailing the
 available options.
 </ul>
          </p>
-         
+
          <h3>Usage</h3>
          <p>By executing the jar file ...
          <pre><code>$ java -jar tDBN-0.1.3.jar</code></pre>
@@ -102,11 +110,11 @@ available options.
          <p>
             Because the algorithm assumes a multinomial distribution, data should be already discretized to guarantee a manageable (i.e., small) number of states for each attribute, taking into account the number of observations. For example, if an attribute is observed 100 times throughout time and 50 different values are recorded, this will generally not provide enough information for learning accurate data dependences.
          </p>
-         
+
 <h4>Dataset preprocessing script</h3>
 
 <p>A Python script for coverting panel data to the tDBN input format can be downloaded <a href="https://github.com/josemonteiro/tDBN/raw/master/vtoh.py">here</a>. Its description and available command-line options are the following:</p>
-         
+
 <pre><code>usage: vtoh.py [-h] [--timeInterval TIMEINTERVAL TIMEINTERVAL]
                [--ignoreColumns IGNORECOLUMNS [IGNORECOLUMNS ...]]
                [--discretizeColumns DISCRETIZECOLUMNS [DISCRETIZECOLUMNS ...]]
@@ -142,12 +150,12 @@ optional arguments:
                         frequency or quantiles discretization (default is
                         equal width discretization).
 </code></pre>
-         
+
          <h4>Example #1</h4>
          <p>
             The first example considers a synthetic network structure with 5 attributes, each taking 8 states and with one parent from the preceding slice ([t] denotes the time-slice):
          </p>
-         <p><img src="images/example1-original.png">            
+         <p><img src="images/example1-original.png">
          </p>
          <p>
             The above network that was sampled to produce the following observations files:
@@ -230,22 +238,22 @@ X2[1] -> X4[1]
          <h4>Example #2</h4>
          <p>
          In the second example, tDBN is employed to learn a gene regulatory network. Specifically, it uses gene expression data related to the embryonic stage of Drosophila melanogaster [<a href="#ref1">1</a>]. The dataset was preprocessed as described in [<a href="#ref2">2</a>] and can be downloaded <a href="files/drosophila-embryonic.csv">here</a>. </p>
-         
+
          <p>As intra-slice dependences in regulatory networks are usually not reported, the option <code>-c</code> omits them by outputting the network in compact form, where each edge represents a dependence between a node at time slice t+1 and its parent at the previous time slice t.</p>
-         
+
          <p>For this example, each node will have at most two parents from the previous slice, which is enforced with <code>-p 2</code>. The minimum description length (MDL) criterion further limits the number of parents by preferring simpler network structures. The <code>-s mdl</code> option is currently redundant, as tDBN uses MDL by default.</p>
-         
+
          <p>The learning command is thus</p>
          <pre><code>$ java -jar tDBN-0.1.3.jar -i drosophila-embryonic.csv -p 2 -d -c | \
   dot -Tpng -o drosophila.png</code></pre>
-  
+
         <p>and the resulting network is:</p>
          <p><img src="images/example2-drosophila-e.png"></p>
 <p>Six out of the eight retrieved regulations (excluding the self-loops) are also reported in [<a href="#ref3">3</a>], indicating a potentially good result of tDBN. It should be noted, however, that data preprocessing may have not been the same, and that the number of observations is quite low, thus leading to many networks with maximum score.
-            
-            
+
+
             <h4>Example #3</h4>
-            
+
             <p>
             The last example shows how to output the network parameters and how to learn a non-stationary DBN. The dataset is very simple, consisting of 2 binary attributes measured in 7 individuals over 3 time-slices, and can be downloaded <a href="files/example3.csv">here</a>:
          </p>
@@ -339,9 +347,9 @@ b: [0.0, 1.0]
 --nonStationary | dot -Tpng -o example3.png</code></pre>
 <p>... this graph is produced:</p>
 <p><img src="images/example3.png"></p>
-            
+
             <!--Advanced usage: tDBN-0.1.3.jar uses the class com.github.tDBN.cli.LearnFromFile as entry point. Other entry points exist.-->
-            
+
          <h3><a name="algorithm"></a>The tDBN learning algorithm</h3>
          <p>
             The tDBN algorithm jointly learns the optimal intra and inter time-slice connectivity of a DBN by constraining the search space to tree augmented networks.  In a tree-augmented network, attributes (nodes) have at most one parent in the same time-slice, hence the intra-slice connectivity is a tree. An attribute can however have several parents from from preceding slices.
@@ -355,7 +363,7 @@ b: [0.0, 1.0]
         <p>
         The tDBN learning algorithm has a theoretical time complexity of O(n<sup>p+3</sup> r<sup>p+2</sup> N), where n is the number of network attributes, p is the number of parents from the preceding time-slice, r is the number of states of all attributes and N is the number of observations.</p>
         <p>This section presents the results of a set of simulations to assess the algorithm's running time versus its theoretical complexity.  The methodology consisted in 1) generating random tree-augmented networks, 2) sampling each of those networks to generate observations, and 3) inputting the observations to the tDBN algorithm to recover the underlying structure. The time taken by the third step of this process &mdash; the algorithm's running time &mdash; was recorded. Furthermore, the original and recovered networks were compared by evaluating the precision metric.</p>
-        
+
         <p>Each of the following subsections studies the effect of varying one of the parameters (n, p, r or N), keeping all the others constant. The default values of the parameters are:</p>
         <table>
         <tr><td>n</td><td>10</td></td></tr>
@@ -393,7 +401,7 @@ b: [0.0, 1.0]
 <tr><td>
 35</td><td>2389&plusmn;9</td><td>8&plusmn;2</td></tr>
         </table></p>
-        
+
         <p><img src="images/n-variation.png"></p>
                 <p>The adjustment of a 4-degree polynomial curve to the obtained data (Time vs. n) yields an almost perfect fit, with R&sup2; > 0.9999. This result is in line with the theoretical complexity of O(n<sup>5</sup>), assuming other parameters constant. As n tends to larger values, only a 5-degree polynomial curve is expected to perfectly fit the data.</p>
         <p><table>
@@ -406,7 +414,7 @@ b: [0.0, 1.0]
         <tr><td>5</td><td>0.999997</td></td></tr>
         </table>
 
-        
+
         <h4>Number of parents p</h4>
         <p><table>
         <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
@@ -423,13 +431,13 @@ b: [0.0, 1.0]
 5</td><td>4395*</td><td>44*</td></tr>
         </table>
         <small>* Due to large running time, simulation for p=5 was only run once</small></p>
-        
+
         <p><img src="images/p-variation.png">&nbsp;<img src="images/p-variation-log.png"></p>
-        
+
         <table><tr><td>Exponential fit</td><td>R&sup2; = 0.993</td></tr></table>
-            
+
             <p>The adjustment of an exponential curve to the obtained data (Time vs. p) yields an good fit, with R&sup2; > 0.99. It can be observed in the semi-log graph that the real curve is not a straight line, but has a slight inclination downwards. This suggests that the real complexity is sub-exponential, nevertheless being bounded by O(2<sup>p</sup>), assuming other parameters constant.</p>
-        
+
         <h4>Size of attributes r</h4>
         <p><table>
         <colgroup><col width="40"/><col width="40"/><col width="40"/></colgroup>
@@ -455,7 +463,7 @@ b: [0.0, 1.0]
 <tr><td>
 20</td><td>1003&plusmn;7</td><td>18&plusmn;8</td></tr>
         </table></p>
-        
+
         <p><img src="images/r-variation.png"></p>
         <p>The adjustment of a 3-degree polynomial curve to the obtained data (Time vs. r) yields an almost perfect fit, with R&sup2; > 0.9999. This result is in line with the theoretical complexity of O(r<sup>4</sup>), assuming other parameters constant. As n tends to larger values, only a 4-degree polynomial curve is expected to perfectly fit the data.</p>
         <p><table>
@@ -466,7 +474,7 @@ b: [0.0, 1.0]
         <tr><td>3</td><td>0.99991</td></td></tr>
         <tr><td>4</td><td>0.99998</td></td></tr>
         </table>
-        
+
         <h4>Number of observations N</h4>
 
         <p><table>
@@ -493,11 +501,11 @@ b: [0.0, 1.0]
 <tr><td>
 1000</td><td>77&plusmn;2</td><td>99&plusmn;2</td></tr>
         </table></p>
-        
+
                 <p><img src="images/N-variation.png"></p>
-                
+
                 <p>The adjustment of a linear curve to the obtained data (Time vs. N) yields a good fit, with R&sup2; > 0.99. This result is in line with the theoretical complexity of O(N), assuming other parameters constant.</p>
-                
+
             <table><tr><td>Linear fit</td><td>R&sup2; = 0.9971</td></tr></table>
 
 
@@ -507,7 +515,7 @@ b: [0.0, 1.0]
             <li><a name="ref2"></a>Zhao, Wentao, Erchin Serpedin, and Edward R. Dougherty. "Inferring gene regulatory networks from time series data using the minimum description length principle." Bioinformatics 22.17 (2006): 2129-2135.</li>
             <li><a name="ref3"></a>Dondelinger, Frank, Sophie Lèbre, and Dirk Husmeier. "Non-homogeneous dynamic Bayesian networks with Bayesian regularization for inferring gene regulatory networks with gradually time-varying structure." Machine learning 90.2 (2013): 191-230.</li>
          </ol>
-         
+
       </section>
       <footer>
          <p>This project is maintained by <a href="https://github.com/josemonteiro">josemonteiro</a></p>
@@ -516,4 +524,3 @@ b: [0.0, 1.0]
       </div>
    </body>
 </html>
-
